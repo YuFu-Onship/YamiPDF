@@ -1,22 +1,22 @@
 package ui
 
 import (
-	"fmt"
+	"app/assets"
+	_ "embed"
 	"image"
-	"image/color"
 	"log"
 	"os"
-	"path"
-	"runtime"
-	"runtime/debug"
 
 	"gioui.org/app"
+	"gioui.org/font"
+	"gioui.org/font/opentype"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/paint"
+	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/shirou/gopsutil/v4/process"
 )
 
 type Page struct {
@@ -31,7 +31,7 @@ type Page struct {
 
 func NewPage(b TrunkBridge) *Page {
 	theme := material.NewTheme()
-	style := NewStyle(theme, WindowsBlue)
+	style := NewStyle(theme, Palette_koishi)
 	style.SetColorMode(true)
 
 	self := Page{
@@ -65,12 +65,40 @@ func (self *Page) Run() {
 func (self *Page) draw(w *app.Window) error {
 	var ops op.Ops
 	self.appwindow = w
+	self.Style.SetColorMode(true)
+	self.Style.Lang = EN
 
-	pdf_path := path.Join(self.bridge.GetRootPath(), "/assets/Witch Hat Atelier, Vol.5 (Kamome Shirahama).pdf")
-	// pdf_path := path.Join(self.bridge.GetRootPath(), "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf")
+	// 加载文字
+	if fonts, err := self.load_fonts(); err == nil {
+		shaper := text.NewShaper(text.WithCollection(fonts))
+		self.Style.Theme.Shaper = shaper
+	}
 
-	doc_id, _ := self.bridge.Add_new_document(pdf_path)
-	pdfview := NewPDFView(doc_id, self.bridge, self)
+	// pdf阅读器
+	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
+	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.5 (Kamome Shirahama).pdf"
+	// pdf_path := "E:/Users/YUFU/Documents/Books/单页.pdf"
+
+	// doc_id, _ := self.bridge.Add_new_document(pdf_path)
+	// pdfview := NewPDFView(doc_id, self.bridge, self)
+
+	// 平滑列表
+	// list := CustomListStruct{}
+	// list.Axis = layout.Vertical
+	// l := CustomList(self.Style.Theme, &list)
+
+	// 开关控件
+	sw := widget.Bool{}
+
+	head_clickable := widget.Clickable{}
+
+	// 侧边栏
+	side_bar := NewSideBar().
+		API_add_btn("home", true, true, NewSideBarButton(self.Style, Icon_home).API_set_text(func() string { return GetWord("home", self.Style.Lang) }).API_set_callfn(func() {})).
+		API_add_btn("books", true, true, NewSideBarButton(self.Style, Icon_setting).API_set_text(func() string { return GetWord("bookshelf", self.Style.Lang) }).API_set_callfn(func() {})).
+		API_add_btn("color_mode", false, false, NewSideBarButton(self.Style, Icon_moon).API_set_text(func() string { return GetWord("color_mode", self.Style.Lang) }).API_set_callfn(func() { self.Style.SetColorMode(!self.Style.isDark) })).
+		API_add_btn("setting", false, true, NewSideBarButton(self.Style, Icon_setting).API_set_text(func() string { return GetWord("setting", self.Style.Lang) }).API_set_callfn(func() {}))
+	side_bar.API_set_active("home")
 
 	for {
 		switch typ := w.Event().(type) {
@@ -88,89 +116,75 @@ func (self *Page) draw(w *app.Window) error {
 			self.is_win_change = typ.Size != self.win_size
 			self.win_size = typ.Size
 
+			if self.is_win_change {
+				// side_btn.API_resize()
+			}
+
 			gtx := app.NewContext(&ops, typ)
-			paint.Fill(gtx.Ops, self.Style.Palette.BG)
+			paint.Fill(gtx.Ops, self.Style.Palette.Bg_1)
+
+			self.Style.Update(gtx)
 
 			self.Deco.Actions(gtx, w)
 
 			layout.Flex{
 				Axis: layout.Vertical,
 			}.Layout(gtx,
-				layout.Rigid(func(gtx C) D { return self.Deco.Layout(gtx) }),
-				layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
+				layout.Rigid(self.Deco.Layout),
+				layout.Flexed(1, func(gtx C) D {
+					return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+						layout.Rigid(func(gtx C) D {
+							return layout.Inset{Bottom: unit.Dp(12), Top: unit.Dp(4), Left: unit.Dp(4)}.Layout(gtx, side_bar.Layout)
+						}),
+
+						layout.Rigid(func(gtx C) D {
+							return Border{
+								Text: "draw call",
+								Bg:   self.Style.Palette.Bg_1,
+								Fg:   self.Style.Palette.Fg_1,
+							}.Layout(gtx, self.Style, func(gtx C) D {
+								return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+									layout.Rigid(material.Label(self.Style.Theme, unit.Sp(20), "E:/Users/YUFU/Documents/Books").Layout),
+									layout.Rigid(material.Switch(self.Style.Theme, &sw, "").Layout),
+								)
+							})
+						}),
+
+						layout.Rigid(func(gtx C) D {
+							return DropDown{}.Layout(gtx, self.Style, &head_clickable,
+								func(gtx C) D {
+									l := material.Body1(self.Style.Theme, "texddddddddddddddddddddddddt")
+									return l.Layout(gtx)
+								},
+								func(gtx C) D {
+									l := material.Body2(self.Style.Theme, "texdsadssssssssssssssst")
+									return l.Layout(gtx)
+								},
+							)
+						}),
+
+						// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
+						// 						layout.Flexed(1, func(gtx C) D {
+						// 							l.Layout(gtx, 1000, func(gtx layout.Context, index int) layout.Dimensions {
+						// 								// 渲染单个 Item 的 UI 逻辑
+						// 								text := fmt.Sprintf("这是第 %d 个平滑滚动列表项", index+1)
+						//
+						// 								return layout.UniformInset(unit.Dp(16)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						// 									return material.Body1(self.Style.Theme, text).Layout(gtx)
+						// 								})
+						// 							})
+						// 							return D{}
+						// 						}),
+					)
+				}),
+
+				// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
 			)
 
 			self.Style.AniSys.Run(gtx)
 			typ.Frame(gtx.Ops)
 		}
 	}
-}
-
-func loadImage(path string) (image.Image, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return nil, err
-	}
-	return img, nil
-}
-
-func printOSMemUsage() {
-	// 获取当前进程 PID
-	pid := int32(os.Getpid())
-	p, err := process.NewProcess(pid)
-	if err != nil {
-		fmt.Println("获取进程失败:", err)
-		return
-	}
-
-	// 获取内存占用信息
-	memInfo, err := p.MemoryInfo()
-	if err != nil {
-		fmt.Println("获取内存信息失败:", err)
-		return
-	}
-
-	// RSS (Resident Set Size) 即操作系统为该进程分配的物理内存大小（字节）
-	rssMB := float64(memInfo.RSS) / 1024 / 1024
-	// VMS (Virtual Memory Size) 虚拟内存大小
-	vmsMB := float64(memInfo.VMS) / 1024 / 1024
-
-	fmt.Printf("[PID: %d] 实际占用物理内存(RSS): %.2f MB | 虚拟内存(VMS): %.2f MB\n", pid, rssMB, vmsMB)
-}
-
-func printMem(tag string) {
-	runtime.GC()         // 强制 GC
-	debug.FreeOSMemory() // 尝试把释放的内存还给操作系统
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	fmt.Printf("[%s] Go 堆内存: %d MB\n", tag, m.Alloc/1024/1024)
-}
-
-// 图像灰度处理
-func ToGrayscaleOp(src image.Image) paint.ImageOp {
-	bounds := src.Bounds()
-
-	dst := image.NewRGBA(bounds)
-	for x := 0; x <= bounds.Dx(); x++ {
-		for y := 0; y <= bounds.Dy(); y++ {
-			r, g, b, a := src.At(x, y).RGBA()
-			if a == 0 {
-				dst.SetRGBA(x, y, color.RGBA{})
-				continue
-			}
-			c := uint8(0.2126*float64(r>>8) + 0.7152*float64(g>>8) + 0.0722*float64(b>>8))
-			dst.SetRGBA(x, y, color.RGBA(color.RGBA{R: c, G: c, B: c, A: uint8(a >> 8)}))
-		}
-	}
-	op := paint.NewImageOp(dst)
-	op.Filter = paint.FilterNearest
-	return op
 }
 
 // 接口部分 ------------------------------------------
@@ -182,7 +196,6 @@ func (self Page) ToggleTheme() {
 	} else {
 		self.Style.SetColorMode(true)
 	}
-	self.Style.apply()
 }
 
 // 窗口大小是否变动
@@ -194,4 +207,54 @@ func (self Page) IsWinSizeChange() bool {
 
 func (self Page) WindowRefresh() {
 	self.appwindow.Invalidate()
+}
+
+// 显示信息
+func (self Page) ShowInfo(id any, text string) {}
+
+// 更改标题栏文本
+func (self Page) Set_deco_text(text string) {
+	self.Deco.API_set_text(text)
+	self.WindowRefresh()
+}
+
+// 更改软件标题文本
+func (self *Page) Set_title_text(text string) {
+	if self.appwindow != nil {
+		self.appwindow.Option(app.Title(text))
+	}
+}
+
+// 加载文字 --------------------------------------------
+
+// 从字节码加载文字
+func (self *Page) load_fonts() ([]font.FontFace, error) {
+	pares_icon_outline, err := opentype.Parse(assets.FontIconOutline)
+	pares_icon_fill, err := opentype.Parse(assets.FontIconFill)
+	pares_emoji, err := opentype.Parse(assets.FontEmoji)
+	pares_sans, err := opentype.Parse(assets.FontSans)
+
+	if err != nil {
+		return nil, err
+	}
+	fontFace := []font.FontFace{
+		font.FontFace{
+			Face: pares_sans,
+			Font: font.Font{Typeface: "sans"},
+		},
+		font.FontFace{
+			Face: pares_emoji,
+			Font: font.Font{Typeface: "noto"},
+		},
+		font.FontFace{
+			Face: pares_icon_outline,
+			Font: font.Font{Typeface: "icons", Style: font.Regular},
+		},
+		font.FontFace{
+			Face: pares_icon_fill,
+			Font: font.Font{Typeface: "icons", Style: font.Italic},
+		},
+	}
+
+	return fontFace, nil
 }

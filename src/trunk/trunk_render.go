@@ -1,15 +1,9 @@
 package trunk
 
 import (
-	"app/src/render"
+	rumia "app/src"
 	"image"
 )
-
-// 渲染pdf
-func (self Trunk) Render(filePath string, page int) (*image.RGBA, error) {
-	r := render.PDFRender{}
-	return r.Render(filePath, page)
-}
 
 // 渲染管理器 ---------------------------------
 
@@ -44,6 +38,12 @@ func (self Trunk) Add_render_page(id string, page int, call_fn func(img *image.R
 	self.RenderManager.Add_render_page(id, page, call_fn)
 }
 
-func (self Trunk) Add_render_page_list(id string, pages []int, call_fn func(page int, img *image.RGBA)) {
-	self.RenderManager.Add_render_page_list(id, pages, call_fn)
+// func (self Trunk) Add_render_page_list(id string, dpi float64, pages []int, call_fn func(page int, dpi float64, img *image.RGBA)) {
+func (self Trunk) Add_render_page_list(id string, tasks []*rumia.RenderFullTask) {
+	self.RenderManager.Add_render_page_list(id, tasks)
+}
+
+// func (self Trunk) Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA)) {
+func (self Trunk) Add_render_tile_list(id string, tasks []*rumia.RenderTileTask) {
+	self.RenderManager.Add_render_tile_list(id, tasks)
 }

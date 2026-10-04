@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"image"
 	"image/color"
 	"log"
 	"time"
@@ -36,18 +35,4 @@ func ComputeTime(fn func()) {
 	start := time.Now()
 	fn()
 	log.Printf("耗时:%v", time.Since(start))
-}
-
-func FlexerX() layout.Widget {
-	return func(gtx C) D {
-		gtx.Constraints.Max.Y = 0
-		return D{Size: gtx.Constraints.Max}
-	}
-}
-
-func Spacer(width, height int) layout.Widget {
-	return func(gtx layout.Context) layout.Dimensions {
-		size := image.Point{X: width, Y: height}
-		return layout.Dimensions{Size: size}
-	}
 }

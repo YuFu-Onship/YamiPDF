@@ -1,6 +1,7 @@
 package ui
 
 import (
+	rumia "app/src"
 	"image"
 )
 
@@ -16,6 +17,15 @@ type UIBridge interface {
 
 	// 请求窗口级重绘
 	WindowRefresh()
+
+	// 增加显示信息
+	ShowInfo(id any, text string)
+
+	// 更改标题栏文本
+	Set_deco_text(text string)
+
+	// 更改软件窗口文本
+	Set_title_text(text string)
 }
 
 // 外部项目接口
@@ -24,11 +34,6 @@ type TrunkBridge interface {
 
 	// 获得exe或main所在的文件路径
 	GetRootPath() string
-
-	// 进行渲染
-	//  - 文件路径
-	//  - 需要渲染的页
-	Render(filePath string, page int) (*image.RGBA, error)
 
 	// 渲染管理器 ---------------------------------
 
@@ -53,5 +58,10 @@ type TrunkBridge interface {
 	Add_render_page(id string, page int, call_fn func(img *image.RGBA))
 
 	// 添加新的渲染页列表
-	Add_render_page_list(id string, pages []int, call_fn func(page int, img *image.RGBA))
+	// Add_render_page_list(id string, dpi float64, pages []int, call_fn func(page int, dpi float64, img *image.RGBA))
+	Add_render_page_list(id string, tasks []*rumia.RenderFullTask)
+
+	// 添加新的渲染瓦块
+	// Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA))
+	Add_render_tile_list(id string, tasks []*rumia.RenderTileTask)
 }

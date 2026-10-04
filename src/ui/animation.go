@@ -15,14 +15,13 @@ type AniDriver interface {
 // 动画系统 ------------------------------------------------------
 type AniSystem struct {
 	EnableAni bool
-	IsUpdate  bool
 	AniList   map[any]AniDriver
+	nextTick  time.Time
 }
 
 func NewAniSystem() *AniSystem {
 	self := AniSystem{
 		EnableAni: true,
-		IsUpdate:  false,
 		AniList:   map[any]AniDriver{},
 	}
 	return &self
@@ -38,8 +37,10 @@ func (self *AniSystem) Run(gtx C) {
 			delete(self.AniList, tag)
 		}
 	}
-	self.IsUpdate = !finish
-	if self.IsUpdate {
+
+	// log.Println(len(self.AniList))
+
+	if !finish {
 		gtx.Execute(op.InvalidateCmd{At: gtx.Now.Add(time.Second / 60)})
 	}
 }
@@ -157,6 +158,46 @@ func (self *AniSystem) Ease64Group(tag any, items []EaseItem, coe float64) {
 	}
 }
 
+type EaseGroupDriver2 struct {
+	cur       []float64
+	tar       []float64
+	precision float64
+	coe       float64
+}
+
+func (self *EaseGroupDriver2) Update() bool {
+	result := true
+	for i := range self.cur {
+		self.cur[i] += (self.tar[i] - self.cur[i]) * self.coe
+		if math.Abs(self.cur[i]-self.tar[i]) < self.precision {
+			self.cur[i] = self.tar[i]
+		} else {
+			result = false
+		}
+	}
+
+	return result
+}
+
+// 组缓动,不使用指针
+func (self *AniSystem) EaseGroup(tag any, cur []float64, tar []float64, precision float64, coe float64) []float64 {
+	if driver, exist := self.AniList[tag].(*EaseGroupDriver2); exist {
+		driver.tar = tar
+		driver.coe = coe
+		driver.precision = precision
+		return driver.cur
+	} else {
+		self.AniList[tag] = &EaseGroupDriver2{
+			cur:       cur,
+			tar:       tar,
+			coe:       coe,
+			precision: precision,
+		}
+
+		return cur
+	}
+}
+
 // 缓出64 计算增量 -----------------------------------------------
 type Ease64v2Driver struct {
 	cur       *float64
@@ -243,54 +284,6 @@ func (self *AniSystem) Ease32(tag any, precision float64, cur *float32, tar floa
 	}
 }
 
-// 阻尼滚动 -----------------------------------------------------------
-type InertiaDriver struct {
-	Cur       *float64
-	Tar       float64
-	Vel       float64 // 当前速度
-	Damping   float64 // 阻尼系数 (如 0.85)
-	Stiffness float64 // 弹簧刚度/追逐系数 (如 0.15)
-	Precision float64
-}
-
-func (d *InertiaDriver) Update() bool {
-	// 计算向目标靠拢的拉力
-	force := (d.Tar - *d.Cur) * d.Stiffness
-	d.Vel += force
-	d.Vel *= d.Damping // 施加阻尼
-
-	*d.Cur += d.Vel
-
-	// 判定停止条件：位置和速度都足够小
-	if math.Abs(d.Tar-*d.Cur) <= d.Precision && math.Abs(d.Vel) <= d.Precision {
-		*d.Cur = d.Tar
-		d.Vel = 0
-		return true
-	}
-	return false
-}
-
-// 阻尼
-//   - precision 精度
-//   - stiffness 弹簧刚度
-//   - damping 阻尼系数
-func (self *AniSystem) AniInertia(tag any, precision float64, cur *float64, delta float64, stiffness, damping float64) {
-	if driver, exists := self.AniList[tag].(*InertiaDriver); exists {
-		// 关键点：不重置动画，而是追加目标增量，并注入初速度
-		driver.Tar += delta
-		driver.Vel += delta * 0.2 // 可选：注入冲量让响应更迅速
-	} else {
-		self.AniList[tag] = &InertiaDriver{
-			Cur:       cur,
-			Tar:       *cur + delta,
-			Vel:       delta * 0.2,
-			Stiffness: stiffness,
-			Damping:   damping,
-			Precision: precision,
-		}
-	}
-}
-
 // 贝塞尔曲线 ------------------------------------------------------
 type CubicBezierDriver struct {
 	Cur *float64
@@ -316,8 +309,11 @@ func (self *CubicBezierDriver) Update() bool {
 }
 
 var (
-	Bezier_ease_in_out_1 = [4]float64{0.3, 0.0, 0.0, 1.0}
-	Bezier_ease_in_out   = [4]float64{0.65, 0.0, 0.35, 0.85}
+	Bezier_ease_in_out_1   = [4]float64{0.3, 0.0, 0.0, 1.0}
+	Bezier_ease_in_out     = [4]float64{0.65, 0.0, 0.35, 0.85}
+	Bezier_back_out_light  = [4]float64{0.34, 1.3, 0.64, 1.0}
+	Bezier_back_out        = [4]float64{0.175, 0.885, 0.32, 1.275}
+	Bezier_back_out_strong = [4]float64{0.68, -0.55, 0.265, 1.55}
 )
 
 // 三次贝塞尔曲线
