@@ -1,0 +1,14 @@
+package main
+
+func imageColor0AtPixel(pixelCoords vec2) vec4 {
+        sizeInPixels := imageSrcTextureSize()
+        offsetInTexels, _ := imageSrcRegionOnTexture()
+        adjustedTexelCoords := pixelCoords/sizeInPixels + offsetInTexels
+        return imageSrc0At(adjustedTexelCoords)
+}
+
+func Fragment(pos vec4, tex vec2, col vec4) vec4 {
+    c:=imageColor0AtPixel(tex)
+     gray:=dot(c.rgb,vec3(0.2126,0.7152,0.0722))
+    return vec4(vec3(gray),c.a)
+}
