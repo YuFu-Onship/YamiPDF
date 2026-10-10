@@ -7,7 +7,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
-	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
 
@@ -33,9 +32,10 @@ func (self Border) Layout(gtx C, style *Style, context W) D {
 
 	return layout.Stack{}.Layout(gtx,
 		layout.Expanded(func(gtx C) D {
-			return widget.Border{Width: self.Width, CornerRadius: self.Radius, Color: self.Fg}.Layout(gtx, func(gtx C) D {
-				return D{Size: gtx.Constraints.Min}
-			})
+			// return widget.Border{Width: self.Width, CornerRadius: self.Radius, Color: self.Fg}.Layout(gtx, func(gtx C) D {
+			draw_rectangle_line(gtx, gtx.Constraints.Min, self.Fg, int(self.Radius), float32(self.Width))
+			return D{Size: gtx.Constraints.Min}
+			// })
 		}),
 
 		layout.Expanded(func(gtx C) D {
@@ -43,6 +43,7 @@ func (self Border) Layout(gtx C, style *Style, context W) D {
 			defer trans.Pop()
 
 			return layout.Stack{}.Layout(gtx,
+				// 背景矩形
 				layout.Expanded(func(gtx C) D {
 					if self.Text == "" {
 						return D{}
@@ -51,6 +52,7 @@ func (self Border) Layout(gtx C, style *Style, context W) D {
 					draw_rectangle(gtx, pt, self.Bg, 0)
 					return D{}
 				}),
+				// 前景文字
 				layout.Stacked(func(gtx C) D {
 					if self.Text == "" {
 						return D{}

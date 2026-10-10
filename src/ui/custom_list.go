@@ -195,13 +195,19 @@ func (l *CustomListWidget) update(gtx C) {
 	l.pending = math.Max(float64(min), math.Min(float64(max), l.pending))
 
 	df := l.pending * 0.15
-	l.pending -= df
+	df = Ternary(
+		math.Abs(l.pending) > 1.0,
+		Ternary(df >= 0, math.Max(1, df), math.Min(-1, df)),
+		l.pending,
+	)
 
+	l.pending -= df
 	l.Position.Offset += int(math.Round(df))
 
 	if math.Abs(df) >= 0.1 {
 		gtx.Execute(op.InvalidateCmd{At: gtx.Now.Add(time.Second / 60)})
 	} else {
+		l.Position.Offset += int(math.Round(l.pending))
 		l.pending = 0
 	}
 }

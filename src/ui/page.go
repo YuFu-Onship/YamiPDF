@@ -15,7 +15,6 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
-	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
 
@@ -31,7 +30,7 @@ type Page struct {
 
 func NewPage(b TrunkBridge) *Page {
 	theme := material.NewTheme()
-	style := NewStyle(theme, Palette_koishi)
+	style := NewStyle(theme, Palette_windows)
 	style.SetColorMode(true)
 
 	self := Page{
@@ -66,7 +65,7 @@ func (self *Page) draw(w *app.Window) error {
 	var ops op.Ops
 	self.appwindow = w
 	self.Style.SetColorMode(true)
-	self.Style.Lang = EN
+	self.Style.Lang = CN
 
 	// 加载文字
 	if fonts, err := self.load_fonts(); err == nil {
@@ -88,14 +87,33 @@ func (self *Page) draw(w *app.Window) error {
 	// l := CustomList(self.Style.Theme, &list)
 
 	// 开关控件
-	sw := widget.Bool{}
+	// head_clickable := widget.Clickable{}
 
-	head_clickable := widget.Clickable{}
+	// 下拉单选
+	// drop_down := NewDropDownChoice().API_add_choice("border").API_add_choice("fill")
+	drop_down := NewDropDownChoice().
+		API_set_border_text(Icon_language).
+		API_add_choice("teto").
+		API_add_choice("koishi").
+		API_add_choice("windows").
+		API_set_callfn(func(choice string) {
+			switch choice {
+			case "teto":
+				self.Style.API_set_palette(Palette_teto)
+			case "windows":
+				self.Style.API_set_palette(Palette_windows)
+			case "koishi":
+				self.Style.API_set_palette(Palette_koishi)
+			}
+		})
+
+	// 书籍卡片
+	book_card := NewBookCard(self.Style)
 
 	// 侧边栏
 	side_bar := NewSideBar().
 		API_add_btn("home", true, true, NewSideBarButton(self.Style, Icon_home).API_set_text(func() string { return GetWord("home", self.Style.Lang) }).API_set_callfn(func() {})).
-		API_add_btn("books", true, true, NewSideBarButton(self.Style, Icon_setting).API_set_text(func() string { return GetWord("bookshelf", self.Style.Lang) }).API_set_callfn(func() {})).
+		API_add_btn("books", true, true, NewSideBarButton(self.Style, Icon_books).API_set_text(func() string { return GetWord("bookshelf", self.Style.Lang) }).API_set_callfn(func() {})).
 		API_add_btn("color_mode", false, false, NewSideBarButton(self.Style, Icon_moon).API_set_text(func() string { return GetWord("color_mode", self.Style.Lang) }).API_set_callfn(func() { self.Style.SetColorMode(!self.Style.isDark) })).
 		API_add_btn("setting", false, true, NewSideBarButton(self.Style, Icon_setting).API_set_text(func() string { return GetWord("setting", self.Style.Lang) }).API_set_callfn(func() {}))
 	side_bar.API_set_active("home")
@@ -137,31 +155,36 @@ func (self *Page) draw(w *app.Window) error {
 							return layout.Inset{Bottom: unit.Dp(12), Top: unit.Dp(4), Left: unit.Dp(4)}.Layout(gtx, side_bar.Layout)
 						}),
 
-						layout.Rigid(func(gtx C) D {
-							return Border{
-								Text: "draw call",
-								Bg:   self.Style.Palette.Bg_1,
-								Fg:   self.Style.Palette.Fg_1,
-							}.Layout(gtx, self.Style, func(gtx C) D {
-								return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-									layout.Rigid(material.Label(self.Style.Theme, unit.Sp(20), "E:/Users/YUFU/Documents/Books").Layout),
-									layout.Rigid(material.Switch(self.Style.Theme, &sw, "").Layout),
-								)
-							})
-						}),
+						layout.Rigid(func(gtx C) D { return drop_down.Layout(gtx, self.Style) }),
+						layout.Rigid(func(gtx C) D { return book_card.Layout(gtx) }),
 
-						layout.Rigid(func(gtx C) D {
-							return DropDown{}.Layout(gtx, self.Style, &head_clickable,
-								func(gtx C) D {
-									l := material.Body1(self.Style.Theme, "texddddddddddddddddddddddddt")
-									return l.Layout(gtx)
-								},
-								func(gtx C) D {
-									l := material.Body2(self.Style.Theme, "texdsadssssssssssssssst")
-									return l.Layout(gtx)
-								},
-							)
-						}),
+						// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
+						// layout.Rigid(func(gtx C) D {
+						// 	return Border{
+						// 		Text: "draw call",
+						// 		Bg:   self.Style.Palette.Bg_1,
+						// 		Fg:   self.Style.Palette.Fg_1,
+						// 	}.Layout(gtx, self.Style, func(gtx C) D {
+						// 		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+						// 			layout.Rigid(material.Label(self.Style.Theme, unit.Sp(20), "E:/Users/YUFU/Documents/Books").Layout),
+						// 			layout.Rigid(material.Switch(self.Style.Theme, &sw, "").Layout),
+						// 		)
+						// 	})
+						// }),
+
+						// layout.Rigid(func(gtx C) D {
+						// 	return drop_down.Layout(gtx, self.Style)
+						// 	return drop_down.Layout(gtx, self.Style,
+						// 		func(gtx C) D {
+						// 			l := material.Body1(self.Style.Theme, "texddddddddddddddddddddddddt")
+						// 			return l.Layout(gtx)
+						// 		},
+						// 		func(gtx C) D {
+						// 			l := material.Body2(self.Style.Theme, "texdsadssssssssssssssst")
+						// 			return l.Layout(gtx)
+						// 		},
+						// 	)
+						// }),
 
 						// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
 						// 						layout.Flexed(1, func(gtx C) D {
@@ -177,8 +200,6 @@ func (self *Page) draw(w *app.Window) error {
 						// 						}),
 					)
 				}),
-
-				// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
 			)
 
 			self.Style.AniSys.Run(gtx)

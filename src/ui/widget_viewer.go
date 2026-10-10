@@ -269,7 +269,7 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 	// self.offsetY_cur = math.Min(0, self.offsetY_cur)
 
 	// 按钮
-	btn_reset := material.Button(self.style.Theme, &self.clickable_reset, "重置")
+	btn_reset := material.Button(self.style.Theme, &self.clickable_reset, GetWord("reset", self.style.Lang))
 	btn_reset.Background = self.style.Palette.Bg_3
 	btn_reset.Color = self.style.Palette.Fg_3
 
@@ -280,14 +280,14 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 		self.is_update_page = true
 	}
 
-	btn_next := material.Button(self.style.Theme, &self.clickable_next, "下一页")
+	btn_next := material.Button(self.style.Theme, &self.clickable_next, GetWord("next", self.style.Lang))
 	btn_next.Background = self.style.Palette.Bg_2
 	btn_next.Color = self.style.Palette.Fg_2
 	if self.clickable_next.Clicked(gtx) {
 		// self.index_focus += 1
 	}
 
-	btn_last := material.Button(self.style.Theme, &self.clickable_last, "上一页")
+	btn_last := material.Button(self.style.Theme, &self.clickable_last, GetWord("last", self.style.Lang))
 	btn_last.Background = self.style.Palette.Bg_1
 	btn_last.Color = self.style.Palette.Fg_1
 	if self.clickable_last.Clicked(gtx) {
@@ -295,14 +295,14 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 
 	}
 
-	btn_rotate := material.Button(self.style.Theme, &self.clickable_rotate, "旋转")
+	btn_rotate := material.Button(self.style.Theme, &self.clickable_rotate, GetWord("rotate", self.style.Lang))
 	btn_rotate.Background = self.style.Palette.Bg_3
 	btn_rotate.Color = self.style.Palette.Fg_3
 	if self.clickable_rotate.Clicked(gtx) {
 		self.rotateArc_tar += math.Pi * 0.5
 	}
 
-	btn_shader := material.Button(self.style.Theme, &self.clickable_shader, "着色器")
+	btn_shader := material.Button(self.style.Theme, &self.clickable_shader, GetWord("shader", self.style.Lang))
 	btn_shader.Background = self.style.Palette.Bg_3
 	btn_shader.Color = self.style.Palette.Fg_3
 	if self.clickable_shader.Clicked(gtx) {
@@ -310,7 +310,7 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 		self.is_update_page = true
 	}
 
-	btn_layout := material.Button(self.style.Theme, &self.clickable_layout, fmt.Sprintf("布局%v", self.mode_layout))
+	btn_layout := material.Button(self.style.Theme, &self.clickable_layout, fmt.Sprintf("layout%v", self.mode_layout))
 	btn_layout.Background = self.style.Palette.Bg_3
 	btn_layout.Color = self.style.Palette.Fg_3
 	if self.clickable_layout.Clicked(gtx) {
@@ -320,7 +320,7 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 		self.apply_center_pos(self.index_focus)
 	}
 
-	btn_order := material.Button(self.style.Theme, &self.clickable_order, "顺序")
+	btn_order := material.Button(self.style.Theme, &self.clickable_order, GetWord("record", self.style.Lang))
 	btn_order.Background = self.style.Palette.Bg_3
 	btn_order.Color = self.style.Palette.Fg_3
 	if self.clickable_order.Clicked(gtx) {

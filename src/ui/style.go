@@ -162,3 +162,9 @@ func (self *Style) color_lerp(color_cur *TempFloatNRGBA, color_tar color.NRGBA) 
 	color_cur.B = result[2]
 	color_cur.A = result[3]
 }
+
+// 设置当前色板
+func (self *Style) API_set_palette(palette StylePalette) {
+	self.PaletteID = palette
+	self.apply()
+}
