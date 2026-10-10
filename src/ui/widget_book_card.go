@@ -28,8 +28,8 @@ type BookCard struct {
 	book_type    string      // 书本格式
 	book_cover   *image.RGBA // 封面
 
-	extend_bar         *ExtendBar
-	extend_bar_percent *ExtendBar
+	extend_bar *ExtendTagBar
+	extend_tag *ExtendTagBar
 }
 
 // 书本卡片
@@ -38,11 +38,11 @@ func NewBookCard(style *Style) *BookCard {
 		clickable: &widget.Clickable{},
 		Style:     style,
 	}
-	self.extend_bar = NewExtendBar(style)
-	self.extend_bar_percent = NewExtendBar(style)
+	self.extend_bar = NewExtendTagBar(style)
+	self.extend_tag = NewExtendTagBar(style)
 
-	self.extend_bar.API_set_text("新编地图学教程新编地图学教程新编地图学教程")
-	self.extend_bar_percent.API_set_text("PDF  |  12%")
+	self.extend_bar.API_set_text([]string{"新编地图学教程新编地图学教程新编地图学教程"}).API_set_max_lines(2)
+	self.extend_tag.API_set_text([]string{"PDF", "12%"})
 
 	return &self
 }
@@ -57,7 +57,7 @@ func (self *BookCard) Layout(gtx C) D {
 	is_hover := self.clickable.Hovered()
 
 	self.extend_bar.is_extend = Ternary(is_hover, true, false)
-	self.extend_bar_percent.is_extend = Ternary(is_hover, true, false)
+	self.extend_tag.is_extend = Ternary(is_hover, true, false)
 
 	return layout.Stack{}.Layout(gtx,
 		layout.Expanded(func(gtx C) D {
@@ -77,7 +77,7 @@ func (self *BookCard) Layout(gtx C) D {
 				layout.Flexed(1, FlexerY()),
 				layout.Rigid(self.extend_bar.Layout),
 				layout.Rigid(layout.Spacer{Height: unit.Dp(4)}.Layout),
-				layout.Rigid(self.extend_bar_percent.Layout),
+				layout.Rigid(self.extend_tag.Layout),
 				layout.Rigid(layout.Spacer{Height: unit.Dp(8)}.Layout),
 			)
 		}),
@@ -176,53 +176,105 @@ func (self *ExtendBar) API_set_text(text string) *ExtendBar {
 type ExtendTagBar struct {
 	Style *Style
 	tags  []string
+	sizes []image.Point
 
 	Height    float64
 	Width     float64
 	width_tar float64
 	width_cur float64
-	spacer    float64
+	spacer    unit.Dp
 
-	is_extend bool
-	is_recalc bool
+	is_extend  bool
+	is_refresh bool
+
+	max_lines int
 }
 
 func NewExtendTagBar(style *Style) *ExtendTagBar {
 	self := ExtendTagBar{
-		Style: style,
+		Style:      style,
+		is_refresh: true,
+		is_extend:  false,
+		spacer:     unit.Dp(4),
+		max_lines:  1,
 	}
 	return &self
 }
 
 func (self *ExtendTagBar) Layout(gtx C) D {
-	return layout.Flex{}.Layout(gtx)
+	if self.is_refresh {
+		self.is_refresh = false
+		self.sizes = []image.Point{}
+
+		self.Width = 0
+
+		for i, tag := range self.tags {
+			label_text := material.Label(self.Style.Theme, unit.Sp(16), tag)
+			label_text.MaxLines = self.max_lines
+			label_icon := material.Label(self.Style.Theme, unit.Sp(14), Icon_vertical_line)
+
+			macro := op.Record(gtx.Ops)
+			lt := layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, label_text.Layout)
+			li := label_icon.Layout(gtx)
+			macro.Stop()
+			self.sizes = append(self.sizes, lt.Size)
+
+			self.Width += float64(lt.Size.X)
+			if i > 0 {
+				self.Width += float64(li.Size.X)
+			}
+
+			self.Height = float64(lt.Size.Y)
+		}
+		self.Width += float64(int(self.spacer) * (len(self.tags) - 1))
+	}
+	self.width_tar = Ternary(self.is_extend, self.Width, 0)
+
+	trans_clip := clip.Rect(image.Rect(0, 0, int(self.width_cur), int(self.Height))).Push(gtx.Ops)
+	paint.FillShape(gtx.Ops, self.Style.Palette.Bg_3, clip.RRect{Rect: image.Rectangle{Max: image.Pt(int(self.Width), int(self.Height))},
+		SW: 0,
+		NW: 0,
+		SE: gtx.Dp(4),
+		NE: gtx.Dp(4),
+	}.Op(gtx.Ops))
+	dims := layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx, self.build_tags(gtx)...)
+	trans_clip.Pop()
+
+	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.4)
+
+	return D{Size: dims.Size}
+}
+
+// 创建标签元素
+func (self *ExtendTagBar) build_tags(gtx C) []layout.FlexChild {
+
+	children := []layout.FlexChild{}
+	for i, tag := range self.tags {
+		if i > 0 {
+			l := material.Label(self.Style.Theme, unit.Sp(14), Icon_vertical_line)
+			l.Color = self.Style.Palette.Fg_3
+			l.Color.A = 128
+			children = append(children, layout.Rigid(l.Layout))
+		}
+
+		label_text := material.Label(self.Style.Theme, unit.Sp(16), tag)
+		label_text.Color = Palette_teto.Dark.Fg_3
+		label_text.MaxLines = self.max_lines
+		children = append(children, layout.Rigid(func(gtx C) D {
+			return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, label_text.Layout)
+		}))
+	}
+	return children
 }
 
 // 覆盖替换标签
 func (self *ExtendTagBar) API_set_text(tags []string) *ExtendTagBar {
 	self.tags = tags
+	self.is_refresh = true
 	return self
 }
 
-// 创建标签元素
-func (self *ExtendTagBar) build_tags(gtx C) D {
-	radius_west := gtx.Dp(4)
-	radius_east := gtx.Dp(4)
-
-	children := []layout.FlexChild{}
-	for i, tag := range self.tags {
-		radius_west = Ternary(i == 0, 0, radius_west)
-		dims := func(gtx C) D {
-			paint.FillShape(gtx.Ops, self.Style.Palette.Bg_3, clip.RRect{Rect: image.Rectangle{Max: image.Pt(int(self.Width), int(self.Height))},
-				SW: radius_west,
-				NW: radius_west,
-				SE: radius_east,
-				NE: radius_east,
-			}.Op(gtx.Ops))
-
-			return material.Label(self.Style.Theme, unit.Sp(16), tag).Layout(gtx)
-		}
-		children = append(children, layout.Rigid(dims))
-	}
-	return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, children...)
+func (self *ExtendTagBar) API_set_max_lines(max_lines int) *ExtendTagBar {
+	self.max_lines = max_lines
+	return self
 }
