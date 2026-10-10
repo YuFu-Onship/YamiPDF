@@ -10,7 +10,8 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	debug.SetGCPercent(40)
+
+	debug.SetGCPercent(100)
 
 	exe_path, _ := os.Executable()
 	project_path := path.Dir(exe_path)
