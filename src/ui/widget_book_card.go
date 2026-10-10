@@ -195,8 +195,7 @@ func NewExtendTagBar(style *Style) *ExtendTagBar {
 }
 
 func (self *ExtendTagBar) Layout(gtx C) D {
-
-	return D{}
+	return layout.Flex{}.Layout(gtx)
 }
 
 // 覆盖替换标签

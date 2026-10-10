@@ -25,7 +25,7 @@ func (self *ChanMutex) Unlock() {
 }
 
 // 尝试上锁
-//  - true 上锁
+//   - true 上锁
 func (self *ChanMutex) TryLock() bool {
 	select {
 	case <-self.ch: // 尝试拿走
