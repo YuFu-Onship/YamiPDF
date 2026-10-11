@@ -108,15 +108,29 @@ func (self *Page) draw(w *app.Window) error {
 		})
 
 	// 书籍卡片
-	book_card := NewBookCard(self.Style)
+	// book_card := NewBookCard(self.Style).API_set_title("丰川祥子谈治理乐队")
+	book_shelf := NewBookShelf(self.Style).
+		API_add_book(BookInfo{title: "Go"}).                                                             // 极短/技术工具
+		API_add_book(BookInfo{title: "The Art of Computer Programming"}).                                // 经典/学术长名 (英文)
+		API_add_book(BookInfo{title: "丰川祥子谈治理乐队"}).                                                      // 梗书/乐队管理 (中文)
+		API_add_book(BookInfo{title: "Le Petit Prince"}).                                                // 经典文学/小王子 (法文)
+		API_add_book(BookInfo{title: "关于我在异世界写代码这件事"}).                                                  // 轻小说风格/长标题 (中文)
+		API_add_book(BookInfo{title: "Katsu"}).                                                          // 极短/料理或漫画 (日文罗马字)
+		API_add_book(BookInfo{title: "Kritik der reinen Vernunft"}).                                     // 哲学/纯粹理性批判 (德文)
+		API_add_book(BookInfo{title: "Clean Code: A Handbook of Agile Software Craftsmanship"}).         // 实用工程/带副标题 (英文)
+		API_add_book(BookInfo{title: "春"}).                                                              // 单字/散文集或诗集 (中文)
+		API_add_book(BookInfo{title: "吾輩は猫である"}).                                                        // 名著/我是猫 (日文)
+		API_add_book(BookInfo{title: "100句学会如何优雅地拒绝需求"}).                                                // 职场生存/中等长度 (中文)
+		API_add_book(BookInfo{title: "Design Patterns: Elements of Reusable Object-Oriented Software"}). // 经典架构/长英文标题
+		API_add_book(BookInfo{title: "Don't Panic!"})                                                    // 极简标语/科幻梗 (英文)
 
 	// 侧边栏
 	side_bar := NewSideBar().
-		API_add_btn("home", true, true, NewSideBarButton(self.Style, Icon_home).API_set_text(func() string { return GetWord("home", self.Style.Lang) }).API_set_callfn(func() {})).
-		API_add_btn("books", true, true, NewSideBarButton(self.Style, Icon_books).API_set_text(func() string { return GetWord("bookshelf", self.Style.Lang) }).API_set_callfn(func() {})).
+		// API_add_btn("home", true, true, NewSideBarButton(self.Style, Icon_home).API_set_text(func() string { return GetWord("home", self.Style.Lang) }).API_set_callfn(func() {})).
+		API_add_btn("book_shelf", true, true, NewSideBarButton(self.Style, Icon_books).API_set_text(func() string { return GetWord("bookshelf", self.Style.Lang) }).API_set_callfn(func() {})).
 		API_add_btn("color_mode", false, false, NewSideBarButton(self.Style, Icon_moon).API_set_text(func() string { return GetWord("color_mode", self.Style.Lang) }).API_set_callfn(func() { self.Style.SetColorMode(!self.Style.isDark) })).
 		API_add_btn("setting", false, true, NewSideBarButton(self.Style, Icon_setting).API_set_text(func() string { return GetWord("setting", self.Style.Lang) }).API_set_callfn(func() {}))
-	side_bar.API_set_active("home")
+	side_bar.API_set_active("book_shelf")
 
 	for {
 		switch typ := w.Event().(type) {
@@ -156,7 +170,7 @@ func (self *Page) draw(w *app.Window) error {
 						}),
 
 						layout.Rigid(func(gtx C) D { return drop_down.Layout(gtx, self.Style) }),
-						layout.Rigid(func(gtx C) D { return book_card.Layout(gtx) }),
+						layout.Rigid(func(gtx C) D { return book_shelf.Layout(gtx) }),
 
 						// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
 						// layout.Rigid(func(gtx C) D {
