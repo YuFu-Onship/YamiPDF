@@ -36,17 +36,3 @@ func ComputeTime(fn func()) {
 	fn()
 	log.Printf("耗时:%v", time.Since(start))
 }
-
-type FileType int
-
-const (
-	FileType_PDF FileType = iota
-	FileType_EPUB
-	FileType_TXT
-)
-
-var FileType_table map[FileType]string = map[FileType]string{
-	FileType_PDF:  "PDF",
-	FileType_EPUB: "EPUB",
-	FileType_TXT:  "TXT",
-}

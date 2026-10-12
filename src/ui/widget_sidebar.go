@@ -156,7 +156,7 @@ func (self *SideBarButton) Layout(gtx C) D {
 
 	self.state = Ternary(self.clickable_icon.Hovered(), mode_sidebar_btn_hover, mode_sidebar_btn_idle)
 	self.state = Ternary(self.is_active, mode_sidebar_btn_active, self.state)
-	self.bar_height_tar = Ternary(self.is_active, 24.0, 0.0)
+	self.bar_height_tar = Ternary(self.is_active, float64(gtx.Dp(24)), 0.0)
 
 	// element
 	ele_bg := Ternary(self.state == mode_sidebar_btn_idle, self.Style.Palette.Bg_2, self.Style.Palette.Bg_3)
@@ -196,7 +196,8 @@ func (self *SideBarButton) Layout(gtx C) D {
 		if self.state != mode_sidebar_btn_active {
 			return D{Size: gtx.Constraints.Min}
 		}
-		draw_rectangle_2(gtx, 0, int(unit.Dp(20-self.bar_height_cur*0.5)), gtx.Dp(6), int(unit.Dp(self.bar_height_cur)), ele_bg, gtx.Dp(2))
+		// draw_rectangle_2(gtx, 0, int(unit.Dp(20-self.bar_height_cur*0.5)), gtx.Dp(6), int(unit.Dp(self.bar_height_cur)), ele_bg, gtx.Dp(2))
+		draw_rectangle_2(gtx, 0, gtx.Dp(unit.Dp(20))-int(self.bar_height_cur/2), gtx.Dp(6), int(unit.Dp(self.bar_height_cur)), ele_bg, gtx.Dp(2))
 		return D{Size: gtx.Constraints.Min}
 	}
 

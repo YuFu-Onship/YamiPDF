@@ -194,7 +194,7 @@ func (l *CustomListWidget) update(gtx C) {
 	l.pending += float64(d)
 	l.pending = math.Max(float64(min), math.Min(float64(max), l.pending))
 
-	df := l.pending * 0.15
+	df := l.pending * 0.2
 	df = Ternary(
 		math.Abs(l.pending) > 1.0,
 		Ternary(df >= 0, math.Max(1, df), math.Min(-1, df)),

@@ -27,37 +27,37 @@ func (self *Border) Default(style *Style) {
 	self.Width = Ternary(self.Width == 0, unit.Dp(1), self.Width)
 }
 
-func (self Border) Layout(gtx C, style *Style, context W) D {
+func (self Border) Layout(gtx layout.Context, style *Style, context layout.Widget) layout.Dimensions {
 	self.Default(style)
 
 	return layout.Stack{}.Layout(gtx,
-		layout.Expanded(func(gtx C) D {
-			// return widget.Border{Width: self.Width, CornerRadius: self.Radius, Color: self.Fg}.Layout(gtx, func(gtx C) D {
-			draw_rectangle_line(gtx, gtx.Constraints.Min, self.Fg, int(self.Radius), float32(self.Width))
-			return D{Size: gtx.Constraints.Min}
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+			// return widget.Border{Width: self.Width, CornerRadius: self.Radius, Color: self.Fg}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			draw_rectangle_line(gtx, gtx.Constraints.Min, self.Fg, gtx.Dp(self.Radius), float32(gtx.Dp(self.Width)))
+			return layout.Dimensions{Size: gtx.Constraints.Min}
 			// })
 		}),
 
-		layout.Expanded(func(gtx C) D {
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			trans := op.Offset(image.Pt(gtx.Dp(12), -gtx.Dp(10))).Push(gtx.Ops)
 			defer trans.Pop()
 
 			return layout.Stack{}.Layout(gtx,
 				// 背景矩形
-				layout.Expanded(func(gtx C) D {
+				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 					if self.Text == "" {
-						return D{}
+						return layout.Dimensions{}
 					}
 					pt := gtx.Constraints.Min
 					draw_rectangle(gtx, pt, self.Bg, 0)
-					return D{}
+					return layout.Dimensions{}
 				}),
 				// 前景文字
-				layout.Stacked(func(gtx C) D {
+				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 					if self.Text == "" {
-						return D{}
+						return layout.Dimensions{}
 					}
-					return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, func(gtx C) D {
+					return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						l := material.Label(style.Theme, unit.Sp(16), self.Text)
 						l.Color = self.Fg
 						return l.Layout(gtx)
@@ -65,7 +65,7 @@ func (self Border) Layout(gtx C, style *Style, context W) D {
 				}),
 			)
 		}),
-		layout.Stacked(func(gtx C) D {
+		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{
 				Top:    unit.Dp(8),
 				Bottom: unit.Dp(8),

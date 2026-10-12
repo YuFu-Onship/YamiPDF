@@ -9,6 +9,23 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 )
 
+// FileType -------------------------------------------------------------
+type FileType int
+
+const (
+	FileType_PDF FileType = iota
+	FileType_EPUB
+	FileType_TXT
+)
+
+var FileType_table map[FileType]string = map[FileType]string{
+	FileType_PDF:  "PDF",
+	FileType_EPUB: "EPUB",
+	FileType_TXT:  "TXT",
+}
+
+// ----------------------------------------------------------------------
+
 // 整页渲染任务
 type RenderFullTask struct {
 	Page    int

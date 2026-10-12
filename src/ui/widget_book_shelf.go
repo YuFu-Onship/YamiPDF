@@ -1,6 +1,7 @@
 package ui
 
 import (
+	rumia "app/src"
 	"image"
 	"image/color"
 
@@ -27,6 +28,8 @@ type BookShelf struct {
 	Style      *Style
 	list       CustomListStruct
 	book_cards []*BookCard
+
+	callback_fn func(BookInfo)
 }
 
 func NewBookShelf(style *Style) *BookShelf {
@@ -34,6 +37,8 @@ func NewBookShelf(style *Style) *BookShelf {
 		Style:      style,
 		list:       CustomListStruct{},
 		book_cards: []*BookCard{},
+
+		callback_fn: func(BookInfo) {},
 	}
 
 	self.list.Axis = layout.Vertical
@@ -41,29 +46,21 @@ func NewBookShelf(style *Style) *BookShelf {
 	return &self
 }
 
-func (self *BookShelf) Layout(gtx C) D {
-	// list := CustomList(self.Style.Theme, &self.list)
-
-	// return list.Layout(gtx, len(self.book_cards), func(gtx C, index int) D {
-	// 	return layout.UniformInset(unit.Dp(4)).Layout(gtx, self.book_cards[index].Layout)
-	// })
+func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 
 	total_books := len(self.book_cards)
 	if total_books == 0 {
-		return D{}
+		return layout.Dimensions{}
 	}
 
-	// list_width := gtx.Constraints.Max.X
 	card_width := gtx.Dp(150 + 8)
-
-	cols_max := gtx.Constraints.Max.X / card_width //每行最大数目
-	cols := max(cols_max, 1)
+	cols := max(gtx.Constraints.Max.X/card_width, 1)
 	row_count := (total_books + cols - 1) / cols
 
 	row_children := make([][]layout.FlexChild, row_count)
 
 	// 每行左侧的间隙
-	width_left := (gtx.Constraints.Max.X - cols_max*card_width) / 2
+	width_left := max(0, (gtx.Constraints.Max.X-cols*card_width)/2)
 
 	for row := range row_count {
 		index_start := row * cols
@@ -78,7 +75,7 @@ func (self *BookShelf) Layout(gtx C) D {
 			}
 
 			// 中间书籍卡片布局
-			row_children[row] = append(row_children[row], layout.Rigid(func(gtx C) D {
+			row_children[row] = append(row_children[row], layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.UniformInset(unit.Dp(4)).Layout(gtx, book_card.Layout)
 			}))
 
@@ -89,11 +86,12 @@ func (self *BookShelf) Layout(gtx C) D {
 		}
 	}
 	list := CustomList(self.Style.Theme, &self.list)
-	return list.Layout(gtx, row_count, func(gtx C, i int) D {
+	return list.Layout(gtx, row_count, func(gtx layout.Context, i int) layout.Dimensions {
 		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, row_children[i]...)
 	})
 }
 
+// 添加书籍
 func (self *BookShelf) API_add_book(book_info BookInfo) *BookShelf {
 	book_card := NewBookCard(self.Style).
 		API_set_title(book_info.title)
@@ -101,19 +99,15 @@ func (self *BookShelf) API_add_book(book_info BookInfo) *BookShelf {
 	return self
 }
 
-func (self *BookShelf) layoutRow(gtx C, startIndex, endIndex int) D {
-	children := make([]layout.FlexChild, 0, endIndex-startIndex)
+// 设置回调函数
+func (self *BookShelf) API_set_callback(fn func(BookInfo)) *BookShelf {
+	self.callback_fn = fn
+	for _, b := range self.book_cards {
+		b.API_set_callfn(func() {
 
-	for i := startIndex; i < endIndex; i++ {
-		card := self.book_cards[i]
-		children = append(children, layout.Rigid(func(gtx C) D {
-			return layout.UniformInset(unit.Dp(4)).Layout(gtx, card.Layout)
-		}))
+		})
 	}
-
-	return layout.Flex{
-		Axis: layout.Horizontal,
-	}.Layout(gtx, children...)
+	return self
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -137,7 +131,7 @@ type BookCard struct {
 	extend_author *ExtendBar
 	extend_tag    *ExtendTagBar
 
-	file_type FileType
+	file_type rumia.FileType
 
 	callback_fn func() // 回调函数
 
@@ -149,7 +143,7 @@ func NewBookCard(style *Style) *BookCard {
 	self := BookCard{
 		clickable: &widget.Clickable{},
 		Style:     style,
-		file_type: FileType_PDF,
+		file_type: rumia.FileType_PDF,
 
 		book_title:  "unknow",
 		book_author: "",
@@ -157,12 +151,12 @@ func NewBookCard(style *Style) *BookCard {
 	}
 	self.extend_title = NewExtendBar(style).API_set_max_lines(2).API_set_text(self.book_title)
 	self.extend_author = NewExtendBar(style)
-	self.extend_tag = NewExtendTagBar(style).API_set_text([]string{FileType_table[self.file_type], "12%"})
+	self.extend_tag = NewExtendTagBar(style).API_set_text([]string{rumia.FileType_table[self.file_type], "12%"})
 
 	return &self
 }
 
-func (self *BookCard) Layout(gtx C) D {
+func (self *BookCard) Layout(gtx layout.Context) layout.Dimensions {
 	gtx.Constraints.Max = image.Pt(gtx.Dp(150), gtx.Dp(225))
 	gtx.Constraints.Min = gtx.Constraints.Max
 
@@ -181,17 +175,18 @@ func (self *BookCard) Layout(gtx C) D {
 	self.extend_tag.API_set_color(self.fg, self.bg)
 
 	return layout.Stack{}.Layout(gtx,
-		layout.Expanded(func(gtx C) D {
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			draw_rectangle(gtx, gtx.Constraints.Max, self.Style.Palette.Bg_2, 4)
-			return D{Size: gtx.Constraints.Max}
+			return layout.Dimensions{Size: gtx.Constraints.Max}
 		}),
-		layout.Expanded(func(gtx C) D {
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			btn := material.Button(self.Style.Theme, self.clickable, "")
 			btn.Background.A = 0
+
 			return btn.Layout(gtx)
-			// return self.clickable.Layout(gtx, func(gtx C) D { return D{Size: gtx.Constraints.Max} })
+			// return self.clickable.Layout(gtx, func(gtx  layout.Context)layout.Dimensions{ return D{Size: gtx.Constraints.Max} })
 		}),
-		layout.Stacked(func(gtx C) D {
+		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Max.X = gtx.Dp(140)
 			return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 				layout.Flexed(1, FlexerY()),
@@ -218,7 +213,7 @@ func (self *BookCard) API_set_author(author string) *BookCard {
 }
 
 // 设置显示的文件类型
-func (self *BookCard) API_set_file_type(file_type FileType) *BookCard {
+func (self *BookCard) API_set_file_type(file_type rumia.FileType) *BookCard {
 	self.file_type = file_type
 	return self
 }
@@ -272,7 +267,7 @@ func NewExtendBar(style *Style) *ExtendBar {
 	return &self
 }
 
-func (self *ExtendBar) Layout(gtx C) D {
+func (self *ExtendBar) Layout(gtx layout.Context) layout.Dimensions {
 	label_text := material.Label(self.Style.Theme, self.font_size, self.Text)
 	label_text.MaxLines = self.max_lines
 	label_text.Color = self.fg
@@ -369,7 +364,7 @@ func NewExtendTagBar(style *Style) *ExtendTagBar {
 	return &self
 }
 
-func (self *ExtendTagBar) Layout(gtx C) D {
+func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 	if self.is_refresh {
 		self.is_refresh = false
 		self.sizes = []image.Point{}
@@ -402,11 +397,11 @@ func (self *ExtendTagBar) Layout(gtx C) D {
 	trans_clip.Pop()
 
 	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.5)
-	return D{Size: dims.Size}
+	return layout.Dimensions{Size: dims.Size}
 }
 
 // 创建标签元素
-func (self *ExtendTagBar) build_tags(gtx C) []layout.FlexChild {
+func (self *ExtendTagBar) build_tags(gtx layout.Context) []layout.FlexChild {
 	children := []layout.FlexChild{}
 	for i, tag := range self.tags {
 		if i > 0 {
@@ -419,7 +414,7 @@ func (self *ExtendTagBar) build_tags(gtx C) []layout.FlexChild {
 		label_text := material.Label(self.Style.Theme, self.font_size, tag)
 		label_text.Color = self.fg
 		label_text.MaxLines = self.max_lines
-		children = append(children, layout.Rigid(func(gtx C) D {
+		children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, label_text.Layout)
 		}))
 	}
