@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"app/assets"
 	"image"
 	"image/color"
 	"slices"
@@ -63,7 +64,7 @@ func (self *DropDown) Layout(gtx C, style *Style, header W, panel W) D {
 	btn_header := material.Button(style.Theme, self.clickable_header, "")
 	btn_header.Background.A = 0
 
-	icon_label := material.Label(style.Theme, unit.Sp(20), Ternary(self.Is_expand, Icon_up, Icon_down))
+	icon_label := material.Label(style.Theme, unit.Sp(20), Ternary(self.Is_expand, assets.Icon_up, assets.Icon_down))
 	icon_label.Font.Style = Ternary(self.clickable_header.Hovered(), font.Italic, font.Regular)
 
 	dims := layout.Flex{Axis: layout.Vertical}.Layout(gtx,
@@ -225,7 +226,7 @@ func (self *DropDownChoice) build_choice_btn(gtx C, clickable *widget.Clickable,
 	btn.Background.A = 0
 	btn.CornerRadius = unit.Dp(4)
 
-	label_icon := material.Label(self.Style.Theme, unit.Sp(20), Icon_check)
+	label_icon := material.Label(self.Style.Theme, unit.Sp(20), assets.Icon_check)
 	label_icon.Color.A = Ternary(self.choices[self.choice_index] == text, label_icon.Color.A, 0)
 
 	label_text := material.Label(self.Style.Theme, unit.Sp(20), GetWord(text, self.Style.Lang))

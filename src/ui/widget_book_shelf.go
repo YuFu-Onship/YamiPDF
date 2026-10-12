@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"app/assets"
 	rumia "app/src"
 	"image"
 	"image/color"
@@ -374,7 +375,7 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 		for i, tag := range self.tags {
 			label_text := material.Label(self.Style.Theme, self.font_size, tag)
 			label_text.MaxLines = self.max_lines
-			label_icon := material.Label(self.Style.Theme, unit.Sp(14), Icon_vertical_line)
+			label_icon := material.Label(self.Style.Theme, unit.Sp(14), assets.Icon_vertical_line)
 
 			macro := op.Record(gtx.Ops)
 			lt := layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, label_text.Layout)
@@ -405,7 +406,7 @@ func (self *ExtendTagBar) build_tags(gtx layout.Context) []layout.FlexChild {
 	children := []layout.FlexChild{}
 	for i, tag := range self.tags {
 		if i > 0 {
-			li := material.Label(self.Style.Theme, unit.Sp(14), Icon_vertical_line)
+			li := material.Label(self.Style.Theme, unit.Sp(14), assets.Icon_vertical_line)
 			li.Color = self.fg
 			li.Color.A = 128
 			children = append(children, layout.Rigid(li.Layout))

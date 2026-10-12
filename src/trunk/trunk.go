@@ -3,14 +3,14 @@ package trunk
 import (
 	"app/src/render"
 	"app/src/tool"
-	"app/src/ui"
+	"app/src/ui/page"
 	"fmt"
 	"time"
 )
 
 type Trunk struct {
 	RootPath      string
-	Page          *ui.Page
+	Page          *page.Page
 	RenderManager *render.RenderManager
 	// ShaderRender render.ShaderRender
 }
@@ -21,7 +21,10 @@ func NewTrunk(path string) *Trunk {
 	}
 
 	self.RenderManager = render.NewRenderManager()
-	self.Page = ui.NewPage(self)
+
+	self.Page = page.NewPage()
+	self.Page.API_set_trunk(self)
+
 	return &self
 }
 

@@ -82,10 +82,9 @@ type Style struct {
 }
 
 func NewStyle(theme *material.Theme, palette StylePalette) Style {
-	isDark := false
 	self := Style{
 		Theme:     theme,
-		isDark:    isDark,
+		isDark:    false,
 		PaletteID: palette,
 		AniSys:    NewAniSystem(),
 		Lang:      CN,
