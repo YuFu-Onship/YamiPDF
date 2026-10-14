@@ -173,7 +173,7 @@ func (self *Page) draw(w *app.Window) error {
 
 			layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 				layout.Rigid(self.Deco.Layout),
-				// layout.Flexed(1, self.page_main.Layout),
+				// layout.Flexed(1, pdfview.layout_viewer),
 			)
 
 			// 			layout.Flex{

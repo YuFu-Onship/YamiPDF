@@ -141,7 +141,7 @@ func (self *PageInfo) Destory() {
 // pdf渲染器 ---------------------------------------------------------
 type PDFViewer struct {
 	motion *Motion // 动作检测
-	style  *Style  // 样式主题
+	Style  *Style  // 样式主题
 
 	buffer_page     map[int]*PageInfo        // 页缓冲区
 	buffer_size     map[int]*image.Rectangle // 尺寸缓冲区
@@ -199,8 +199,9 @@ type PDFViewer struct {
 }
 
 // 新的pdf渲染窗口
-func NewPDFView(doc_id string, bridge_trunk TrunkBridge, bridge_ui UIBridge) *PDFViewer {
+func NewPDFView(doc_id string, style *Style, bridge_trunk TrunkBridge, bridge_ui UIBridge) *PDFViewer {
 	self := PDFViewer{
+		Style:  style,
 		motion: NewMotion(),
 		pad:    8,
 
@@ -262,16 +263,14 @@ func NewPDFView(doc_id string, bridge_trunk TrunkBridge, bridge_ui UIBridge) *PD
 }
 
 // 界面渲染
-func (self *PDFViewer) Layout(gtx C, style *Style) D {
-	self.style = style
-
+func (self *PDFViewer) Layout(gtx C) D {
 	// self.offsetY_tar = math.Min(0, self.offsetY_tar)
 	// self.offsetY_cur = math.Min(0, self.offsetY_cur)
 
 	// 按钮
-	btn_reset := material.Button(self.style.Theme, &self.clickable_reset, GetWord("reset", self.style.Lang))
-	btn_reset.Background = self.style.Palette.Bg_3
-	btn_reset.Color = self.style.Palette.Fg_3
+	btn_reset := material.Button(self.Style.Theme, &self.clickable_reset, GetWord("reset", self.Style.Lang))
+	btn_reset.Background = self.Style.Palette.Bg_3
+	btn_reset.Color = self.Style.Palette.Fg_3
 
 	if self.clickable_reset.Clicked(gtx) {
 		self.apply_center(self.index_focus)
@@ -280,39 +279,39 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 		self.is_update_page = true
 	}
 
-	btn_next := material.Button(self.style.Theme, &self.clickable_next, GetWord("next", self.style.Lang))
-	btn_next.Background = self.style.Palette.Bg_2
-	btn_next.Color = self.style.Palette.Fg_2
+	btn_next := material.Button(self.Style.Theme, &self.clickable_next, GetWord("next", self.Style.Lang))
+	btn_next.Background = self.Style.Palette.Bg_2
+	btn_next.Color = self.Style.Palette.Fg_2
 	if self.clickable_next.Clicked(gtx) {
 		// self.index_focus += 1
 	}
 
-	btn_last := material.Button(self.style.Theme, &self.clickable_last, GetWord("last", self.style.Lang))
-	btn_last.Background = self.style.Palette.Bg_1
-	btn_last.Color = self.style.Palette.Fg_1
+	btn_last := material.Button(self.Style.Theme, &self.clickable_last, GetWord("last", self.Style.Lang))
+	btn_last.Background = self.Style.Palette.Bg_1
+	btn_last.Color = self.Style.Palette.Fg_1
 	if self.clickable_last.Clicked(gtx) {
 		// self.index_focus -= 1
 
 	}
 
-	btn_rotate := material.Button(self.style.Theme, &self.clickable_rotate, GetWord("rotate", self.style.Lang))
-	btn_rotate.Background = self.style.Palette.Bg_3
-	btn_rotate.Color = self.style.Palette.Fg_3
+	btn_rotate := material.Button(self.Style.Theme, &self.clickable_rotate, GetWord("rotate", self.Style.Lang))
+	btn_rotate.Background = self.Style.Palette.Bg_3
+	btn_rotate.Color = self.Style.Palette.Fg_3
 	if self.clickable_rotate.Clicked(gtx) {
 		self.rotateArc_tar += math.Pi * 0.5
 	}
 
-	btn_shader := material.Button(self.style.Theme, &self.clickable_shader, GetWord("shader", self.style.Lang))
-	btn_shader.Background = self.style.Palette.Bg_3
-	btn_shader.Color = self.style.Palette.Fg_3
+	btn_shader := material.Button(self.Style.Theme, &self.clickable_shader, GetWord("shader", self.Style.Lang))
+	btn_shader.Background = self.Style.Palette.Bg_3
+	btn_shader.Color = self.Style.Palette.Fg_3
 	if self.clickable_shader.Clicked(gtx) {
 		self.mode_shader = (self.mode_shader + 1) % mode_shader_end
 		self.is_update_page = true
 	}
 
-	btn_layout := material.Button(self.style.Theme, &self.clickable_layout, fmt.Sprintf("layout%v", self.mode_layout))
-	btn_layout.Background = self.style.Palette.Bg_3
-	btn_layout.Color = self.style.Palette.Fg_3
+	btn_layout := material.Button(self.Style.Theme, &self.clickable_layout, fmt.Sprintf("layout%v", self.mode_layout))
+	btn_layout.Background = self.Style.Palette.Bg_3
+	btn_layout.Color = self.Style.Palette.Fg_3
 	if self.clickable_layout.Clicked(gtx) {
 		self.mode_layout = (self.mode_layout + 1) % mode_layout_end
 		self.is_update_page = true
@@ -320,14 +319,14 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 		self.apply_center_pos(self.index_focus)
 	}
 
-	btn_order := material.Button(self.style.Theme, &self.clickable_order, GetWord("record", self.style.Lang))
-	btn_order.Background = self.style.Palette.Bg_3
-	btn_order.Color = self.style.Palette.Fg_3
+	btn_order := material.Button(self.Style.Theme, &self.clickable_order, GetWord("record", self.Style.Lang))
+	btn_order.Background = self.Style.Palette.Bg_3
+	btn_order.Color = self.Style.Palette.Fg_3
 	if self.clickable_order.Clicked(gtx) {
 		self.mode_order = (self.mode_order + 1) % mode_order_end
 	}
 
-	// 	btn_release := material.Button(self.style.Theme, &self.clickable_release, "释放")
+	// 	btn_release := material.Button(self.Style.Theme, &self.clickable_release, "释放")
 	// 	if self.clickable_release.Clicked(gtx) {
 	// 	}
 
@@ -360,14 +359,14 @@ func (self *PDFViewer) Layout(gtx C, style *Style) D {
 
 	// 动画效果
 	if self.scale_cur != self.scale_tar || self.offsetY_cur != self.offsetY_tar || self.offsetX_cur != self.offsetX_tar {
-		style.AniSys.Ease64Group(&self.offsetY_cur, []EaseItem{
+		self.Style.AniSys.Ease64Group(&self.offsetY_cur, []EaseItem{
 			{Cur: &self.scale_cur, Tar: self.scale_tar, Precision: 0.01},
 			{Cur: &self.offsetY_cur, Tar: self.offsetY_tar, Precision: 0.1},
 			{Cur: &self.offsetX_cur, Tar: self.offsetX_tar, Precision: 0.1},
 		}, 0.4)
 	}
 
-	style.AniSys.Ease64(&self.rotateArc_cur, 0.0005, &self.rotateArc_cur, self.rotateArc_tar, 0.3)
+	self.Style.AniSys.Ease64(&self.rotateArc_cur, 0.0005, &self.rotateArc_cur, self.rotateArc_tar, 0.3)
 
 	return dims
 }

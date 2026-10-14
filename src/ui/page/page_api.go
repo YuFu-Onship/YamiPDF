@@ -2,8 +2,10 @@ package page
 
 import (
 	"app/src/ui"
+	"image"
 
 	"gioui.org/layout"
+	"gioui.org/op"
 )
 
 type PageAPI interface {
@@ -17,6 +19,10 @@ type PageManager struct {
 
 	page_cur string
 	pages    map[string]PageAPI
+
+	is_change    bool
+	offset_y_tar float64
+	offset_y_cur float64
 }
 
 func NewPageManager(style *ui.Style) *PageManager {
@@ -25,24 +31,48 @@ func NewPageManager(style *ui.Style) *PageManager {
 
 		page_cur: "",
 		pages:    map[string]PageAPI{},
+
+		is_change:    false,
+		offset_y_tar: 0,
+		offset_y_cur: 0,
 	}
 	return &self
 }
 
 func (self *PageManager) Layout(gtx C) D {
+
+	if self.is_change {
+		self.is_change = false
+		self.offset_y_cur = float64(gtx.Constraints.Max.Y)
+	}
+
+	self.Style.AniSys.Ease64(&self.offset_y_cur, 1, &self.offset_y_cur, self.offset_y_tar, 0.4)
+
 	if page, exist := self.pages[self.page_cur]; exist {
-		return page.Layout(gtx)
-		// return self.pages[self.page_cur].Layout(gtx)
+		trans_offset := op.Offset(image.Pt(0, int(self.offset_y_cur))).Push(gtx.Ops)
+		dims := page.Layout(gtx)
+		trans_offset.Pop()
+
+		return dims
 	}
 	return D{}
 }
 
 // 跳转到对应的页面
 func (self *PageManager) API_set_cur_page(id string) *PageManager {
-	_, exist := self.pages[id]
-	if exist {
-		self.page_cur = id
+	if self.page_cur == id {
+		return self
 	}
+
+	if _, exist := self.pages[id]; !exist {
+		return self
+	}
+
+	// self.pages[self.page_cur].OnExit()
+	self.page_cur = id
+	self.pages[self.page_cur].OnEnter()
+	self.is_change = true
+
 	return self
 }
 

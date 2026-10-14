@@ -16,11 +16,11 @@ import (
 )
 
 type BookInfo struct {
-	title  string
-	author string
-	path   string
+	Title  string
+	Author string
+	Path   string
 
-	num          int // 总页数
+	Num          int // 总页数
 	already_read int // 已阅读页数
 }
 
@@ -31,6 +31,9 @@ type BookShelf struct {
 	book_cards []*BookCard
 
 	callback_fn func(BookInfo)
+
+	// width_spacer_tar float64
+	// width_spacer_cur float64
 }
 
 func NewBookShelf(style *Style) *BookShelf {
@@ -40,6 +43,9 @@ func NewBookShelf(style *Style) *BookShelf {
 		book_cards: []*BookCard{},
 
 		callback_fn: func(BookInfo) {},
+
+		// width_spacer_tar: 0,
+		// width_spacer_cur: 0,
 	}
 
 	self.list.Axis = layout.Vertical
@@ -55,13 +61,15 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 	}
 
 	card_width := gtx.Dp(150 + 8)
-	cols := max(gtx.Constraints.Max.X/card_width, 1)
+	cols := max((gtx.Constraints.Max.X-gtx.Dp(24))/card_width, 1)
 	row_count := (total_books + cols - 1) / cols
 
 	row_children := make([][]layout.FlexChild, row_count)
 
-	// 每行左侧的间隙
-	width_left := max(0, (gtx.Constraints.Max.X-cols*card_width)/2)
+	// 每行左侧的间隙,/2时居中, /4时靠左
+	// self.width_spacer_tar = float64(max(0, (gtx.Constraints.Max.X-cols*card_width)/cols))
+	// self.width_spacer_tar = min(self.width_spacer_tar, float64(unit.Dp(24)))
+	// self.Style.AniSys.Ease64(&self.width_spacer_cur, 1, &self.width_spacer_cur, self.width_spacer_tar, 0.4)
 
 	for row := range row_count {
 		index_start := row * cols
@@ -72,13 +80,15 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 
 			// 左侧间距
 			if i == index_start {
-				row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(width_left)}.Layout))
+				row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(16)}.Layout))
+				// row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(self.width_spacer_cur)}.Layout))
 			}
 
 			// 中间书籍卡片布局
 			row_children[row] = append(row_children[row], layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.UniformInset(unit.Dp(4)).Layout(gtx, book_card.Layout)
+				return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4), Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, book_card.Layout)
 			}))
+			// row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(self.width_spacer_cur)}.Layout))
 
 			// 右侧间距
 			if i == index_end-1 {
@@ -95,7 +105,7 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 // 添加书籍
 func (self *BookShelf) API_add_book(book_info BookInfo) *BookShelf {
 	book_card := NewBookCard(self.Style).
-		API_set_title(book_info.title)
+		API_set_title(book_info.Title)
 	self.book_cards = append(self.book_cards, book_card)
 	return self
 }

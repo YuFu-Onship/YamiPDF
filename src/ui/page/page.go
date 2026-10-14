@@ -36,7 +36,7 @@ type Page struct {
 
 func NewPage() *Page {
 	theme := material.NewTheme()
-	style := ui.NewStyle(theme, ui.Palette_windows)
+	style := ui.NewStyle(theme, ui.Palette_teto)
 	style.SetColorMode(true)
 
 	self := Page{
@@ -86,8 +86,8 @@ func (self *Page) draw(w *app.Window) error {
 	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.5 (Kamome Shirahama).pdf"
 	// pdf_path := "E:/Users/YUFU/Documents/Books/单页.pdf"
 
-	// doc_id, _ := self.bridge.Add_new_document(pdf_path)
-	// pdfview := NewPDFView(doc_id, self.bridge, self)
+	// doc_id, _ := self.bridge_trunk.Add_new_document(pdf_path)
+	// pdfview := ui.NewPDFView(doc_id, self.Style, self.bridge_trunk, self)
 
 	// 平滑列表
 	// list := CustomListStruct{}
@@ -118,19 +118,6 @@ func (self *Page) draw(w *app.Window) error {
 	// 书籍卡片
 	// book_card := NewBookCard(self.Style).API_set_title("丰川祥子谈治理乐队")
 	// book_shelf := NewBookShelf(self.Style).
-	// 	API_add_book(BookInfo{title: "Go"}).                                                             // 极短/技术工具
-	// 	API_add_book(BookInfo{title: "The Art of Computer Programming"}).                                // 经典/学术长名 (英文)
-	// 	API_add_book(BookInfo{title: "丰川祥子谈治理乐队"}).                                                      // 梗书/乐队管理 (中文)
-	// 	API_add_book(BookInfo{title: "Le Petit Prince"}).                                                // 经典文学/小王子 (法文)
-	// 	API_add_book(BookInfo{title: "关于我在异世界写代码这件事"}).                                                  // 轻小说风格/长标题 (中文)
-	// 	API_add_book(BookInfo{title: "Katsu"}).                                                          // 极短/料理或漫画 (日文罗马字)
-	// 	API_add_book(BookInfo{title: "Kritik der reinen Vernunft"}).                                     // 哲学/纯粹理性批判 (德文)
-	// 	API_add_book(BookInfo{title: "Clean Code: A Handbook of Agile Software Craftsmanship"}).         // 实用工程/带副标题 (英文)
-	// 	API_add_book(BookInfo{title: "春"}).                                                              // 单字/散文集或诗集 (中文)
-	// 	API_add_book(BookInfo{title: "吾輩は猫である"}).                                                        // 名著/我是猫 (日文)
-	// 	API_add_book(BookInfo{title: "100句学会如何优雅地拒绝需求"}).                                                // 职场生存/中等长度 (中文)
-	// 	API_add_book(BookInfo{title: "Design Patterns: Elements of Reusable Object-Oriented Software"}). // 经典架构/长英文标题
-	// 	API_add_book(BookInfo{title: "Don't Panic!"})                                                    // 极简标语/科幻梗 (英文)
 
 	// 侧边栏
 	// side_bar := NewSideBar().
@@ -170,6 +157,7 @@ func (self *Page) draw(w *app.Window) error {
 			layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 				layout.Rigid(self.Deco.Layout),
 				layout.Flexed(1, self.page_main.Layout),
+				// layout.Flexed(1, pdfview.Layout),
 			)
 
 			// 			layout.Flex{
@@ -295,4 +283,9 @@ func (self Page) IsWinSizeChange() bool {
 func (self *Page) API_set_trunk(trunk ui.TrunkBridge) *Page {
 	self.bridge_trunk = trunk
 	return self
+}
+
+// 切换颜色模式
+func (self Page) ToggleTheme() {
+	self.Style.Toggle()
 }

@@ -18,9 +18,6 @@ type UIBridge interface {
 	// 请求窗口级重绘
 	WindowRefresh()
 
-	// 增加显示信息
-	ShowInfo(id any, text string)
-
 	// 更改标题栏文本
 	Set_deco_text(text string)
 
