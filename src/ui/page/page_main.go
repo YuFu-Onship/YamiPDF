@@ -26,7 +26,7 @@ func NewPageMain(style *ui.Style) *PageMain {
 
 	self.side_bar.API_add_btn("experimental", true, true,
 		ui.NewSideBarButton(self.Style, assets.Icon_experimental).
-			API_set_text(func() string { return ui.GetWord("Experimental", self.Style.Lang) }).API_set_callfn(func() { self.page_manager.API_set_cur_page("experimental") }))
+			API_set_text(func() string { return ui.GetWord("experimental", self.Style.Lang) }).API_set_callfn(func() { self.page_manager.API_set_cur_page("experimental") }))
 
 	self.side_bar.API_add_btn("color_mode", false, false,
 		ui.NewSideBarButton(self.Style, assets.Icon_moon).

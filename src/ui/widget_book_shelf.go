@@ -294,6 +294,7 @@ func (self *ExtendBar) Layout(gtx layout.Context) layout.Dimensions {
 	}
 
 	self.width_tar = Ternary(self.is_extend, self.Width, 0)
+	self.width_cur = Ternary(self.is_extend, self.width_cur, 0)
 
 	// 裁切
 	trans_clip := clip.Rect(image.Rect(0, 0, int(self.width_cur), gtx.Dp(unit.Dp(self.Height)))).Push(gtx.Ops)
@@ -307,7 +308,7 @@ func (self *ExtendBar) Layout(gtx layout.Context) layout.Dimensions {
 	trans_clip.Pop()
 
 	// 动画更新
-	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.5)
+	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.4)
 	return dims
 }
 
@@ -400,14 +401,16 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 		}
 		self.Width += float64(int(self.spacer) * (len(self.tags) - 1))
 	}
+
 	self.width_tar = Ternary(self.is_extend, self.Width, 0)
+	self.width_cur = Ternary(self.is_extend, self.width_cur, 0)
 
 	trans_clip := clip.Rect(image.Rect(0, 0, int(self.width_cur), int(self.Height))).Push(gtx.Ops)
 	paint.FillShape(gtx.Ops, self.bg, clip.RRect{Rect: image.Rectangle{Max: image.Pt(int(self.Width), int(self.Height))}, SW: 0, NW: 0, SE: gtx.Dp(4), NE: gtx.Dp(4)}.Op(gtx.Ops))
 	dims := layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx, self.build_tags(gtx)...)
 	trans_clip.Pop()
 
-	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.5)
+	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.4)
 	return layout.Dimensions{Size: dims.Size}
 }
 

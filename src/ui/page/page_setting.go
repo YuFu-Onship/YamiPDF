@@ -17,6 +17,7 @@ type PageSetting struct {
 	page_manager *PageManager
 
 	menus           []string
+	menu_space      ui.AniEaseList
 	menu_cur        string
 	menu_clickables map[string]*widget.Clickable
 	menu_callback   func(string)
@@ -33,17 +34,20 @@ func NewPageSetting(style *ui.Style) *PageSetting {
 		page_manager: NewPageManager(style),
 
 		menus:           []string{},
+		menu_space:      *ui.NewAniEaseList(style, ui.AniEaseList{Coe: 0.3, Num: 2, Space: 100, Tigger_percent: 0.3}),
 		menu_cur:        "",
 		menu_clickables: map[string]*widget.Clickable{},
 		text_index:      map[string][]string{},
 	}
 
-	self.menus = append(self.menus, "custom", "info", "test", "test2", "test3")
+	self.menus = append(self.menus, "custom", "info")
 	self.text_index["custom"] = []string{assets.Icon_palette}
 	self.text_index["info"] = []string{assets.Icon_info}
 
 	self.page_manager.API_add_page("custom", NewPageSettingCustom(style))
 	self.page_manager.API_add_page("info", NewPageSettingInfo(style))
+
+	self.page_manager.API_set_cur_page("custom")
 
 	self.menu_callback = func(id string) {
 		self.menu_cur = id
@@ -75,6 +79,7 @@ func (self *PageSetting) OnEnter() {
 	if len(self.menus) > 0 {
 		self.menu_cur = self.menus[0]
 	}
+	self.menu_space.Reset()
 }
 func (self *PageSetting) OnExit() {}
 
@@ -83,12 +88,16 @@ func (self *PageSetting) menu(gtx C) D {
 	gtx.Constraints.Max.X = gtx.Dp(150)
 	children := []layout.FlexChild{}
 
-	for _, id := range self.menus {
+	for index, id := range self.menus {
 		children = append(children, layout.Rigid(layout.Spacer{Height: unit.Dp(4)}.Layout))
+		children = append(children, layout.Rigid(layout.Spacer{Height: unit.Dp(self.menu_space.API_get_value(index))}.Layout))
 		children = append(children, layout.Rigid(func(gtx C) D {
 			return self.build_muen_btn(gtx, self.menu_clickables[id], id)
 		}))
 	}
+
+	self.menu_space.Layout(gtx)
+
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
 }
 
@@ -106,7 +115,7 @@ func (self *PageSetting) build_muen_btn(gtx C, clickable *widget.Clickable, id s
 	text := ui.GetWord(id, self.Style.Lang)
 
 	if clickable.Clicked(gtx) {
-		self.menu_callback(text)
+		self.menu_callback(id)
 	}
 
 	is_hover := clickable.Hovered()

@@ -159,8 +159,9 @@ type DropDownChoice struct {
 	Style     *Style
 }
 
-func NewDropDownChoice() *DropDownChoice {
+func NewDropDownChoice(style *Style) *DropDownChoice {
 	self := DropDownChoice{
+		Style:      style,
 		drop_down:  NewDropDown(),
 		choices:    []string{},
 		clickables: []widget.Clickable{},
@@ -175,8 +176,7 @@ func NewDropDownChoice() *DropDownChoice {
 }
 
 // 单选布局
-func (self *DropDownChoice) Layout(gtx C, style *Style) D {
-	self.Style = style
+func (self *DropDownChoice) Layout(gtx C) D {
 	self.drop_down.Fg = self.Style.Palette.Fg_1
 	self.drop_down.Bg = self.Style.Palette.Bg_1
 

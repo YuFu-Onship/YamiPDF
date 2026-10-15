@@ -110,8 +110,9 @@ type SideBarButton struct {
 
 	icon string
 
-	text  func() string
-	state modeSideBarButton
+	text      func() string
+	text_last string
+	state     modeSideBarButton
 
 	is_active       bool
 	is_allow_active bool
@@ -149,11 +150,23 @@ func NewSideBarButton(style *Style, icon_1 string) *SideBarButton {
 func (self *SideBarButton) Layout(gtx C) D {
 	radius := gtx.Dp(4)
 
-	// if self.clickable_icon.Clicked(gtx) {
-	// 	self.fn()
-	// 	self.API_set_active(true)
-	// }
+	// 更新文本
+	self.is_redraw_desc = Ternary(self.text_last == self.text(), false, true)
+	self.text_last = self.text()
 
+	if self.is_redraw_desc {
+		self.is_redraw_desc = false
+		gtxMeasure := gtx
+		gtxMeasure.Constraints.Min = image.Point{}
+		l := material.Label(self.Style.Theme, unit.Sp(20), self.text())
+		l.MaxLines = 1
+		macro := op.Record(gtxMeasure.Ops)
+		t := l.Layout(gtxMeasure)
+		macro.Stop()
+		self.desc_size = t.Size
+	}
+
+	// 更新状态机
 	self.state = Ternary(self.clickable_icon.Hovered(), mode_sidebar_btn_hover, mode_sidebar_btn_idle)
 	self.state = Ternary(self.is_active, mode_sidebar_btn_active, self.state)
 	self.bar_height_tar = Ternary(self.is_active, float64(gtx.Dp(24)), 0.0)
@@ -176,21 +189,7 @@ func (self *SideBarButton) Layout(gtx C) D {
 		return btn.Layout(gtx)
 	}
 
-	if self.is_redraw_desc {
-		self.is_redraw_desc = false
-
-		gtxMeasure := gtx
-		gtxMeasure.Constraints.Min = image.Point{}
-
-		l := material.Label(self.Style.Theme, unit.Sp(20), self.text())
-		l.MaxLines = 1
-		macro := op.Record(gtxMeasure.Ops)
-		t := l.Layout(gtxMeasure)
-		macro.Stop()
-
-		self.desc_size = t.Size
-	}
-
+	// 左侧指示条
 	style_bar := func(gtx C) D {
 		gtx.Constraints.Min.X = gtx.Dp(6)
 		if self.state != mode_sidebar_btn_active {
@@ -201,6 +200,7 @@ func (self *SideBarButton) Layout(gtx C) D {
 		return D{Size: gtx.Constraints.Min}
 	}
 
+	// 右侧描述条
 	style_desc := func(gtx C) D {
 		w, h := self.desc_size.X+gtx.Dp(60), gtx.Dp(40)
 		self.desc_width_tar = Ternary(self.clickable_icon.Hovered(), float64(w+gtx.Dp(1)), 0)
