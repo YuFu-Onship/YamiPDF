@@ -37,7 +37,7 @@ type ColorPalette struct {
 	Bg_3 color.NRGBA
 }
 
-// 样式配色
+// 样式配色,包含明暗两种色板
 type StylePalette struct {
 	Dark  ColorPalette
 	Light ColorPalette
@@ -79,6 +79,8 @@ type Style struct {
 	PaletteID    StylePalette
 	AniSys       *AniSystem
 	Lang         Language
+
+	Bridge_ui BridgeUI
 }
 
 func NewStyle(theme *material.Theme, palette StylePalette) Style {
@@ -138,6 +140,9 @@ func (self *Style) apply() {
 	self.Palette.Fg_2 = self.Palette_tar.Fg_2
 	self.Palette.Fg_3 = self.Palette_tar.Fg_3
 
+	if self.Bridge_ui != nil {
+		self.Bridge_ui.WindowRefresh()
+	}
 }
 
 func (self *Style) color_update() {
@@ -166,4 +171,23 @@ func (self *Style) color_lerp(color_cur *TempFloatNRGBA, color_tar color.NRGBA) 
 func (self *Style) API_set_palette(palette StylePalette) {
 	self.PaletteID = palette
 	self.apply()
+}
+
+// 得到当前明暗
+func (self *Style) API_get_darkmode() bool {
+	return self.isDark
+}
+
+// 设置当前明暗
+func (self *Style) API_set_darkmode(value bool) {
+	self.isDark = value
+	self.apply()
+}
+
+// 得到某一颜色模式下的色板主题色:bg3
+func (self *Style) API_get_theme_color(palette_id StylePalette) color.NRGBA {
+	if self.isDark {
+		return palette_id.Dark.Bg_3
+	}
+	return palette_id.Light.Bg_3
 }

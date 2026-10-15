@@ -89,34 +89,20 @@ func (self *CustomDeco) Layout(gtx C) D {
 			}
 		}),
 
-		layout.Rigid(Spacer(gtx.Dp(5), gtx.Dp(0))),
-
+		layout.Rigid(layout.Spacer{Width: unit.Dp(16)}.Layout),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return self.Deco.LayoutMove(gtx, func(gtx layout.Context) layout.Dimensions {
-				if self.text == "" {
-					return D{Size: gtx.Constraints.Max}
-				}
+				gtx.Constraints.Min = gtx.Constraints.Max
 
-				macro := op.Record(gtx.Ops)
-				l := material.Label(self.Style.Theme, unit.Sp(16), self.text)
-				l.Color = self.Style.Palette_deco.Decoicon_fg_idle
-				l.MaxLines = 1
-				t := l.Layout(gtx)
-				call := macro.Stop()
+				text := material.Body1(self.Style.Theme, self.text)
+				text.MaxLines = 1
 
-				textHeight := t.Size.Y
-				textWidth := t.Size.X
-
-				offsetX := (gtx.Constraints.Max.X - textWidth) / 2
-				offsetY := (gtx.Constraints.Max.Y - textHeight) / 2
-
-				offsetX = max(offsetX, 0)
-				offsetY = max(offsetY, 0)
-
-				defer op.Offset(image.Pt(offsetX, offsetY)).Push(gtx.Ops).Pop()
-				call.Add(gtx.Ops)
-
-				return D{Size: gtx.Constraints.Max}
+				return layout.Center.Layout(gtx, func(gtx C) D {
+					return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+						layout.Rigid(text.Layout),
+						layout.Flexed(1, layout.Spacer{}.Layout),
+					)
+				})
 			})
 		}),
 
@@ -260,7 +246,7 @@ func (self *CustomDeco) API_set_text(text string) {
 //   - true 显示返回按钮
 //   - false 不显示返回按钮
 func (self *CustomDeco) API_set_back(state bool) {
-
+	self.is_show_arrow = state
 }
 
 // 标题栏图标 ---------------------------------------------------------------------

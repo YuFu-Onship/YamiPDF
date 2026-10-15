@@ -33,8 +33,9 @@ var TransTable = map[string]Word{
 	"test":         {CN: "测试", EN: "Test", JP: "テスト"},
 
 	// 设置_个性化
-	"language": {CN: "语言", EN: "Language", JP: "言語"},
-	"palette":  {CN: "色板", EN: "Palette", JP: "パレット"},
+	"language":  {CN: "语言", EN: "Language", JP: "言語"},
+	"palette":   {CN: "色板", EN: "Palette", JP: "パレット"},
+	"dark_mode": {"暗色模式", "Dark Mode", ""},
 
 	// 设置_信息
 	"version":   {"版本", "Version", ""},

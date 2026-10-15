@@ -78,10 +78,15 @@ func (self *PageSetting) Layout(gtx C) D {
 func (self *PageSetting) OnEnter() {
 	if len(self.menus) > 0 {
 		self.menu_cur = self.menus[0]
+		self.page_manager.API_set_cur_page(self.menus[0])
 	}
 	self.menu_space.Reset()
+	self.page_manager.OnEnter()
+
 }
-func (self *PageSetting) OnExit() {}
+func (self *PageSetting) OnExit() {
+	self.page_manager.OnExit()
+}
 
 // 左侧侧边栏
 func (self *PageSetting) menu(gtx C) D {

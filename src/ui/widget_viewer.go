@@ -182,8 +182,8 @@ type PDFViewer struct {
 	page_radius int     // 固定的元素圆角半径
 	base_height float64 // 固定的元素高
 
-	bridge_trunk TrunkBridge // 外部接口
-	bridge_ui    UIBridge    // 内部ui接口
+	bridge_trunk BridgeTrunk // 外部接口
+	bridge_ui    BridgeUI    // 内部ui接口
 
 	dpi float64 // 全局dpi
 
@@ -199,7 +199,7 @@ type PDFViewer struct {
 }
 
 // 新的pdf渲染窗口
-func NewPDFView(doc_id string, style *Style, bridge_trunk TrunkBridge, bridge_ui UIBridge) *PDFViewer {
+func NewPDFView(doc_id string, style *Style, bridge_trunk BridgeTrunk, bridge_ui BridgeUI) *PDFViewer {
 	self := PDFViewer{
 		Style:  style,
 		motion: NewMotion(),

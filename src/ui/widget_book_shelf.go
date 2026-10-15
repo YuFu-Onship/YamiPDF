@@ -32,8 +32,8 @@ type BookShelf struct {
 
 	callback_fn func(BookInfo)
 
-	// width_spacer_tar float64
-	// width_spacer_cur float64
+	width_spacer_tar float64
+	width_spacer_cur float64
 }
 
 func NewBookShelf(style *Style) *BookShelf {
@@ -44,8 +44,8 @@ func NewBookShelf(style *Style) *BookShelf {
 
 		callback_fn: func(BookInfo) {},
 
-		// width_spacer_tar: 0,
-		// width_spacer_cur: 0,
+		width_spacer_tar: 0,
+		width_spacer_cur: 0,
 	}
 
 	self.list.Axis = layout.Vertical
@@ -67,9 +67,9 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 	row_children := make([][]layout.FlexChild, row_count)
 
 	// 每行左侧的间隙,/2时居中, /4时靠左
-	// self.width_spacer_tar = float64(max(0, (gtx.Constraints.Max.X-cols*card_width)/cols))
-	// self.width_spacer_tar = min(self.width_spacer_tar, float64(unit.Dp(24)))
-	// self.Style.AniSys.Ease64(&self.width_spacer_cur, 1, &self.width_spacer_cur, self.width_spacer_tar, 0.4)
+	self.width_spacer_tar = float64(max(0, (gtx.Constraints.Max.X-cols*card_width)/2))
+	self.width_spacer_tar = Ternary(row_count <= 1, 0, self.width_spacer_tar)
+	self.Style.AniSys.Ease64(&self.width_spacer_cur, 1, &self.width_spacer_cur, self.width_spacer_tar, 0.15)
 
 	for row := range row_count {
 		index_start := row * cols
@@ -80,8 +80,8 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 
 			// 左侧间距
 			if i == index_start {
-				row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(16)}.Layout))
-				// row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(self.width_spacer_cur)}.Layout))
+				// row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(16)}.Layout))
+				row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(self.width_spacer_cur)}.Layout))
 			}
 
 			// 中间书籍卡片布局
@@ -296,6 +296,10 @@ func (self *ExtendBar) Layout(gtx layout.Context) layout.Dimensions {
 	self.width_tar = Ternary(self.is_extend, self.Width, 0)
 	self.width_cur = Ternary(self.is_extend, self.width_cur, 0)
 
+	if self.width_cur == 0 && self.width_tar == 0 {
+		return D{Size: image.Pt(0, gtx.Dp(unit.Dp(self.Height)))}
+	}
+
 	// 裁切
 	trans_clip := clip.Rect(image.Rect(0, 0, int(self.width_cur), gtx.Dp(unit.Dp(self.Height)))).Push(gtx.Ops)
 
@@ -404,6 +408,10 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 
 	self.width_tar = Ternary(self.is_extend, self.Width, 0)
 	self.width_cur = Ternary(self.is_extend, self.width_cur, 0)
+
+	if self.width_cur == 0 && self.width_tar == 0 {
+		return D{Size: image.Pt(0, gtx.Dp(unit.Dp(self.Height)))}
+	}
 
 	trans_clip := clip.Rect(image.Rect(0, 0, int(self.width_cur), int(self.Height))).Push(gtx.Ops)
 	paint.FillShape(gtx.Ops, self.bg, clip.RRect{Rect: image.Rectangle{Max: image.Pt(int(self.Width), int(self.Height))}, SW: 0, NW: 0, SE: gtx.Dp(4), NE: gtx.Dp(4)}.Op(gtx.Ops))

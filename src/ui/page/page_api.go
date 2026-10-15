@@ -58,6 +58,17 @@ func (self *PageManager) Layout(gtx C) D {
 	return D{}
 }
 
+func (self *PageManager) OnEnter() {
+	for _, page := range self.pages {
+		page.OnEnter()
+	}
+}
+func (self *PageManager) OnExit() {
+	for _, page := range self.pages {
+		page.OnExit()
+	}
+}
+
 // 跳转到对应的页面
 func (self *PageManager) API_set_cur_page(id string) *PageManager {
 	if self.page_cur == id {
@@ -80,4 +91,9 @@ func (self *PageManager) API_set_cur_page(id string) *PageManager {
 func (self *PageManager) API_add_page(id string, page PageAPI) *PageManager {
 	self.pages[id] = page
 	return self
+}
+
+// 得到当前页面id
+func (self *PageManager) API_get_cur_id() string {
+	return self.page_cur
 }

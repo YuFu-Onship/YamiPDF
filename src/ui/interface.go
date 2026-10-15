@@ -6,7 +6,7 @@ import (
 )
 
 // 内部接口
-type UIBridge interface {
+type BridgeUI interface {
 	// 切换颜色模式
 	ToggleTheme()
 
@@ -26,7 +26,7 @@ type UIBridge interface {
 }
 
 // 外部项目接口
-type TrunkBridge interface {
+type BridgeTrunk interface {
 	Test()
 
 	// 获得exe或main所在的文件路径

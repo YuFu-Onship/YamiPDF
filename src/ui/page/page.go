@@ -25,13 +25,13 @@ type W = layout.Widget
 type Page struct {
 	Deco         *ui.CustomDeco
 	Style        *ui.Style
-	bridge_trunk ui.TrunkBridge
+	bridge_trunk ui.BridgeTrunk
 
 	win_size      image.Point
 	is_win_change bool
 	appwindow     *app.Window
 
-	page_main PageAPI
+	page_manager *PageManager
 }
 
 func NewPage() *Page {
@@ -40,8 +40,9 @@ func NewPage() *Page {
 	style.SetColorMode(true)
 
 	self := Page{
-		Deco:  ui.NewCustomDeco(&style),
-		Style: &style,
+		Deco:         ui.NewCustomDeco(&style),
+		Style:        &style,
+		page_manager: NewPageManager(&style),
 	}
 
 	return &self
@@ -72,6 +73,7 @@ func (self *Page) draw(w *app.Window) error {
 
 	self.Style.SetColorMode(true)
 	self.Style.Lang = ui.CN
+	self.Style.Bridge_ui = self
 
 	// 加载文字
 	if fonts, err := self.load_fonts(); err == nil {
@@ -79,7 +81,9 @@ func (self *Page) draw(w *app.Window) error {
 		self.Style.Theme.Shaper = shaper
 	}
 
-	self.page_main = NewPageMain(self.Style)
+	self.page_manager.API_add_page("main", NewPageMain(self.Style))
+	self.page_manager.API_add_page("pdf_viewer", NewPagePDF(self.Style))
+	self.page_manager.API_set_cur_page("main")
 
 	// pdf阅读器
 	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
@@ -88,44 +92,6 @@ func (self *Page) draw(w *app.Window) error {
 
 	// doc_id, _ := self.bridge_trunk.Add_new_document(pdf_path)
 	// pdfview := ui.NewPDFView(doc_id, self.Style, self.bridge_trunk, self)
-
-	// 平滑列表
-	// list := CustomListStruct{}
-	// list.Axis = layout.Vertical
-	// l := CustomList(self.Style.Theme, &list)
-
-	// 开关控件
-	// head_clickable := widget.Clickable{}
-
-	// 下拉单选
-	// drop_down := NewDropDownChoice().API_add_choice("border").API_add_choice("fill")
-	// drop_down := NewDropDownChoice().
-	// 	API_set_border_text(Icon_language).
-	// 	API_add_choice("teto").
-	// 	API_add_choice("koishi").
-	// 	API_add_choice("windows").
-	// 	API_set_callfn(func(choice string) {
-	// 		switch choice {
-	// 		case "teto":
-	// 			self.Style.API_set_palette(Palette_teto)
-	// 		case "windows":
-	// 			self.Style.API_set_palette(Palette_windows)
-	// 		case "koishi":
-	// 			self.Style.API_set_palette(Palette_koishi)
-	// 		}
-	// 	})
-
-	// 书籍卡片
-	// book_card := NewBookCard(self.Style).API_set_title("丰川祥子谈治理乐队")
-	// book_shelf := NewBookShelf(self.Style).
-
-	// 侧边栏
-	// side_bar := NewSideBar().
-	// 	// API_add_btn("home", true, true, NewSideBarButton(self.Style, Icon_home).API_set_text(func() string { return GetWord("home", self.Style.Lang) }).API_set_callfn(func() {})).
-	// 	API_add_btn("book_shelf", true, true, NewSideBarButton(self.Style, assets.Icon_books).API_set_text(func() string { return GetWord("bookshelf", self.Style.Lang) }).API_set_callfn(func() {})).
-	// 	API_add_btn("color_mode", false, false, NewSideBarButton(self.Style, assets.Icon_moon).API_set_text(func() string { return GetWord("color_mode", self.Style.Lang) }).API_set_callfn(self.Style.Toggle)).
-	// 	API_add_btn("setting", false, true, NewSideBarButton(self.Style, assets.Icon_setting).API_set_text(func() string { return GetWord("setting", self.Style.Lang) }).API_set_callfn(func() {}))
-	// side_bar.API_set_active("book_shelf")
 
 	for {
 		switch typ := w.Event().(type) {
@@ -151,71 +117,15 @@ func (self *Page) draw(w *app.Window) error {
 			paint.Fill(gtx.Ops, self.Style.Palette.Bg_1)
 
 			self.Style.Update(gtx)
-
 			self.Deco.Actions(gtx, w)
+
+			deco_back_state := Ternary(self.page_manager.API_get_cur_id() == "main", false, true)
+			self.Deco.API_set_back(deco_back_state)
 
 			layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 				layout.Rigid(self.Deco.Layout),
-				layout.Flexed(1, self.page_main.Layout),
-				// layout.Flexed(1, pdfview.Layout),
+				layout.Flexed(1, self.page_manager.Layout),
 			)
-
-			// 			layout.Flex{
-			// 				Axis: layout.Vertical,
-			// 			}.Layout(gtx,
-			// 				layout.Rigid(self.Deco.Layout),
-			// 				layout.Flexed(1, func(gtx C) D {
-			// 					return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-			// 						layout.Rigid(func(gtx C) D {
-			// 							return layout.Inset{Bottom: unit.Dp(12), Top: unit.Dp(4), Left: unit.Dp(4)}.Layout(gtx, side_bar.Layout)
-			// 						}),
-			//
-			// 						layout.Rigid(func(gtx C) D { return drop_down.Layout(gtx, self.Style) }),
-			// 						layout.Rigid(func(gtx C) D { return book_shelf.Layout(gtx) }),
-			//
-			// 						// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
-			// 						// layout.Rigid(func(gtx C) D {
-			// 						// 	return Border{
-			// 						// 		Text: "draw call",
-			// 						// 		Bg:   self.Style.Palette.Bg_1,
-			// 						// 		Fg:   self.Style.Palette.Fg_1,
-			// 						// 	}.Layout(gtx, self.Style, func(gtx C) D {
-			// 						// 		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-			// 						// 			layout.Rigid(material.Label(self.Style.Theme, unit.Sp(20), "E:/Users/YUFU/Documents/Books").Layout),
-			// 						// 			layout.Rigid(material.Switch(self.Style.Theme, &sw, "").Layout),
-			// 						// 		)
-			// 						// 	})
-			// 						// }),
-			//
-			// 						// layout.Rigid(func(gtx C) D {
-			// 						// 	return drop_down.Layout(gtx, self.Style)
-			// 						// 	return drop_down.Layout(gtx, self.Style,
-			// 						// 		func(gtx C) D {
-			// 						// 			l := material.Body1(self.Style.Theme, "texddddddddddddddddddddddddt")
-			// 						// 			return l.Layout(gtx)
-			// 						// 		},
-			// 						// 		func(gtx C) D {
-			// 						// 			l := material.Body2(self.Style.Theme, "texdsadssssssssssssssst")
-			// 						// 			return l.Layout(gtx)
-			// 						// 		},
-			// 						// 	)
-			// 						// }),
-			//
-			// 						// layout.Flexed(1, func(gtx C) D { return pdfview.Layout(gtx, self.Style) }),
-			// 						// 						layout.Flexed(1, func(gtx C) D {
-			// 						// 							l.Layout(gtx, 1000, func(gtx layout.Context, index int) layout.Dimensions {
-			// 						// 								// 渲染单个 Item 的 UI 逻辑
-			// 						// 								text := fmt.Sprintf("这是第 %d 个平滑滚动列表项", index+1)
-			// 						//
-			// 						// 								return layout.UniformInset(unit.Dp(16)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			// 						// 									return material.Body1(self.Style.Theme, text).Layout(gtx)
-			// 						// 								})
-			// 						// 							})
-			// 						// 							return D{}
-			// 						// 						}),
-			// 					)
-			// 				}),
-			// 			)
 
 			self.Style.AniSys.Run(gtx)
 			typ.Frame(gtx.Ops)
@@ -280,7 +190,7 @@ func (self Page) IsWinSizeChange() bool {
 }
 
 // 设置trunk根接口
-func (self *Page) API_set_trunk(trunk ui.TrunkBridge) *Page {
+func (self *Page) API_set_trunk(trunk ui.BridgeTrunk) *Page {
 	self.bridge_trunk = trunk
 	return self
 }

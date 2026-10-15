@@ -30,14 +30,14 @@ import (
 type Page struct {
 	Deco   *CustomDeco
 	Style  *Style
-	bridge TrunkBridge
+	bridge BridgeTrunk
 
 	win_size      image.Point
 	is_win_change bool
 	appwindow     *app.Window
 }
 
-func NewPage(b TrunkBridge) *Page {
+func NewPage(b BridgeTrunk) *Page {
 	theme := material.NewTheme()
 	style := NewStyle(theme, Palette_windows)
 	style.SetColorMode(true)
