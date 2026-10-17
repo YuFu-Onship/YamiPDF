@@ -238,7 +238,7 @@ func (self *SideBarButton) Layout(gtx C) D {
 		layout.Rigid(layout.Spacer{Width: unit.Dp(4)}.Layout),
 		layout.Rigid(style_desc),
 	)
-	self.Style.AniSys.Ease64(&self.desc_width_cur, 0.1, &self.desc_width_cur, self.desc_width_tar, 0.4)
+	self.Style.AniSys.Ease64(&self.desc_width_cur, 1, &self.desc_width_cur, self.desc_width_tar, 0.4)
 	self.Style.AniSys.Ease64(&self.bar_height_cur, 0.1, &self.bar_height_cur, self.bar_height_tar, 0.4)
 
 	return dims

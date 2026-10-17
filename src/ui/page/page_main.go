@@ -12,6 +12,8 @@ type PageMain struct {
 	Style        *ui.Style
 	page_manager PageManager
 	side_bar     *ui.SideBar
+
+	bridge_ui ui.BridgeUI
 }
 
 func NewPageMain(style *ui.Style) *PageMain {
@@ -40,10 +42,14 @@ func NewPageMain(style *ui.Style) *PageMain {
 	self.side_bar.API_set_active("book_shelf")
 
 	self.page_manager = *NewPageManager(style)
-	self.page_manager.API_add_page("book_shelf", NewPageShelf(style))
-	self.page_manager.API_add_page("setting", NewPageSetting(style))
+	// self.page_manager.API_add_page("book_shelf", NewPageShelf(style))
+	// self.page_manager.API_add_page("setting", NewPageSetting(style))
+
+	self.page_manager.Add_page("book_shelf", true, func() PageAPI { return NewPageShelf(style) })
+	self.page_manager.Add_page("setting", false, func() PageAPI { return NewPageSetting(style) })
 
 	self.page_manager.API_set_cur_page("book_shelf")
+	self.page_manager.API_set_bridge_ui("book_shelf", self.bridge_ui)
 
 	return &self
 }
@@ -64,3 +70,8 @@ func (self *PageMain) Layout(gtx C) D {
 
 func (self *PageMain) OnEnter() {}
 func (self *PageMain) OnExit()  {}
+func (self *PageMain) Destory() {}
+
+func (self *PageMain) API_set_bridge_ui(bridge_ui ui.BridgeUI) {
+	self.bridge_ui = bridge_ui
+}

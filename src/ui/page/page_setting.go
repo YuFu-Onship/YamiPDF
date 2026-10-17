@@ -44,8 +44,8 @@ func NewPageSetting(style *ui.Style) *PageSetting {
 	self.text_index["custom"] = []string{assets.Icon_palette}
 	self.text_index["info"] = []string{assets.Icon_info}
 
-	self.page_manager.API_add_page("custom", NewPageSettingCustom(style))
-	self.page_manager.API_add_page("info", NewPageSettingInfo(style))
+	self.page_manager.Add_page("custom", false, func() PageAPI { return NewPageSettingCustom(style) })
+	self.page_manager.Add_page("info", false, func() PageAPI { return NewPageSettingInfo(style) })
 
 	self.page_manager.API_set_cur_page("custom")
 
@@ -87,6 +87,8 @@ func (self *PageSetting) OnEnter() {
 func (self *PageSetting) OnExit() {
 	self.page_manager.OnExit()
 }
+func (self *PageSetting) Destory()                                {}
+func (self *PageSetting) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}
 
 // 左侧侧边栏
 func (self *PageSetting) menu(gtx C) D {

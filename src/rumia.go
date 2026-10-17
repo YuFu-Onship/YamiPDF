@@ -41,3 +41,11 @@ type RenderTileTask struct {
 	Rect_ratio *types.Rectangle //图形学坐标系,原点在左上角
 	Call_fn    func(img *image.RGBA)
 }
+
+// 书本信息
+type BookInfo struct {
+	Title    string
+	Author   string
+	Path     string
+	FileType FileType
+}

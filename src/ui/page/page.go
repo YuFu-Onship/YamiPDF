@@ -81,9 +81,12 @@ func (self *Page) draw(w *app.Window) error {
 		self.Style.Theme.Shaper = shaper
 	}
 
-	self.page_manager.API_add_page("main", NewPageMain(self.Style))
-	self.page_manager.API_add_page("pdf_viewer", NewPagePDF(self.Style))
+	// self.page_manager.API_add_page("main", NewPageMain(self.Style))
+	self.page_manager.Add_page("main", true, func() PageAPI { return NewPageMain(self.Style) })
+	self.page_manager.Add_page("pdf_viewer", false, func() PageAPI { return NewPagePDF(self.Style) })
 	self.page_manager.API_set_cur_page("main")
+
+	self.page_manager.API_set_bridge_ui("main", self)
 
 	// pdf阅读器
 	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
@@ -198,4 +201,9 @@ func (self *Page) API_set_trunk(trunk ui.BridgeTrunk) *Page {
 // 切换颜色模式
 func (self Page) ToggleTheme() {
 	self.Style.Toggle()
+}
+
+// 设置界面
+func (self *Page) Set_cur_page(id string) {
+	self.page_manager.API_set_cur_page(id)
 }

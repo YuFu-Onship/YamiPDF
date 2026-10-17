@@ -15,22 +15,14 @@ import (
 	"gioui.org/widget/material"
 )
 
-type BookInfo struct {
-	Title  string
-	Author string
-	Path   string
-
-	Num          int // 总页数
-	already_read int // 已阅读页数
-}
-
 // 书架排版控件
 type BookShelf struct {
-	Style      *Style
-	list       CustomListStruct
+	Style *Style
+	list  CustomListStruct
+
 	book_cards []*BookCard
 
-	callback_fn func(BookInfo)
+	callback_fn func(rumia.BookInfo)
 
 	width_spacer_tar float64
 	width_spacer_cur float64
@@ -38,11 +30,12 @@ type BookShelf struct {
 
 func NewBookShelf(style *Style) *BookShelf {
 	self := BookShelf{
-		Style:      style,
-		list:       CustomListStruct{},
+		Style: style,
+		list:  CustomListStruct{},
+
 		book_cards: []*BookCard{},
 
-		callback_fn: func(BookInfo) {},
+		callback_fn: func(rumia.BookInfo) {},
 
 		width_spacer_tar: 0,
 		width_spacer_cur: 0,
@@ -103,19 +96,18 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 // 添加书籍
-func (self *BookShelf) API_add_book(book_info BookInfo) *BookShelf {
-	book_card := NewBookCard(self.Style).
-		API_set_title(book_info.Title)
+func (self *BookShelf) API_add_book(book_info rumia.BookInfo) *BookShelf {
+	book_card := NewBookCard(self.Style).API_set_book_info(book_info)
 	self.book_cards = append(self.book_cards, book_card)
 	return self
 }
 
 // 设置回调函数
-func (self *BookShelf) API_set_callback(fn func(BookInfo)) *BookShelf {
+func (self *BookShelf) API_set_callback(fn func(rumia.BookInfo)) *BookShelf {
 	self.callback_fn = fn
 	for _, b := range self.book_cards {
-		b.API_set_callfn(func() {
-
+		b.API_set_callfn(func(book_info rumia.BookInfo) {
+			self.callback_fn(book_info)
 		})
 	}
 	return self
@@ -131,20 +123,14 @@ type BookCard struct {
 	img_widget *widget.Image
 	clickable  *widget.Clickable
 
-	book_percent float64     // 阅读百分比
-	book_title   string      // 书本名称
-	book_author  string      // 作者名称
-	book_path    string      // 书本路径
-	book_type    string      // 书本格式
-	book_cover   *image.RGBA // 封面
+	book_info rumia.BookInfo
 
-	extend_title  *ExtendBar
-	extend_author *ExtendBar
-	extend_tag    *ExtendTagBar
+	extend_title *ExtendTagBar
+	extend_tag   *ExtendTagBar
 
 	file_type rumia.FileType
 
-	callback_fn func() // 回调函数
+	callback_fn func(rumia.BookInfo) // 回调函数
 
 	fg, bg color.NRGBA
 }
@@ -156,13 +142,11 @@ func NewBookCard(style *Style) *BookCard {
 		Style:     style,
 		file_type: rumia.FileType_PDF,
 
-		book_title:  "unknow",
-		book_author: "",
-		callback_fn: func() {},
+		callback_fn: func(rumia.BookInfo) {},
 	}
-	self.extend_title = NewExtendBar(style).API_set_max_lines(2).API_set_text(self.book_title)
-	self.extend_author = NewExtendBar(style)
-	self.extend_tag = NewExtendTagBar(style).API_set_text([]string{rumia.FileType_table[self.file_type], "12%"})
+
+	self.extend_tag = NewExtendTagBar(style)
+	self.extend_title = NewExtendTagBar(style).API_set_max_lines(2)
 
 	return &self
 }
@@ -171,8 +155,9 @@ func (self *BookCard) Layout(gtx layout.Context) layout.Dimensions {
 	gtx.Constraints.Max = image.Pt(gtx.Dp(150), gtx.Dp(225))
 	gtx.Constraints.Min = gtx.Constraints.Max
 
+	// 回调函数
 	if self.clickable.Clicked(gtx) {
-		self.callback_fn()
+		self.callback_fn(self.book_info)
 	}
 
 	is_hover := self.clickable.Hovered()
@@ -193,9 +178,7 @@ func (self *BookCard) Layout(gtx layout.Context) layout.Dimensions {
 		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			btn := material.Button(self.Style.Theme, self.clickable, "")
 			btn.Background.A = 0
-
 			return btn.Layout(gtx)
-			// return self.clickable.Layout(gtx, func(gtx  layout.Context)layout.Dimensions{ return D{Size: gtx.Constraints.Max} })
 		}),
 		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Max.X = gtx.Dp(140)
@@ -210,137 +193,27 @@ func (self *BookCard) Layout(gtx layout.Context) layout.Dimensions {
 	)
 }
 
-// 设置文件标题
-func (self *BookCard) API_set_title(title string) *BookCard {
-	self.book_title = title
-	self.extend_title.API_set_text(title)
-	return self
-}
+// 设置书本信息
+func (self *BookCard) API_set_book_info(book_info rumia.BookInfo) *BookCard {
+	self.book_info = book_info
 
-// 设置作者名称
-func (self *BookCard) API_set_author(author string) *BookCard {
-	self.book_author = author
+	self.extend_title.API_set_text([]string{self.book_info.Title})
+	self.extend_tag.API_set_text([]string{rumia.FileType_table[rumia.FileType_PDF], "12%"})
+
+	self.extend_title.is_refresh = true
+	self.extend_tag.is_refresh = true
 	return self
 }
 
 // 设置显示的文件类型
 func (self *BookCard) API_set_file_type(file_type rumia.FileType) *BookCard {
-	self.file_type = file_type
+	self.book_info.FileType = file_type
 	return self
 }
 
 // 设置回调函数
-func (self *BookCard) API_set_callfn(callback_fn func()) *BookCard {
+func (self *BookCard) API_set_callfn(callback_fn func(book_info rumia.BookInfo)) *BookCard {
 	self.callback_fn = callback_fn
-	return self
-}
-
-// ------------------------------------------------------------------------------------------------
-
-// 内含文本的伸缩条
-type ExtendBar struct {
-	Style  *Style
-	Text   string
-	Height float64
-	Width  float64
-
-	width_cur float64
-	width_tar float64
-
-	is_extend  bool
-	is_refresh bool
-
-	max_lines int
-
-	font_size unit.Sp
-
-	fg, bg color.NRGBA
-}
-
-func NewExtendBar(style *Style) *ExtendBar {
-	self := ExtendBar{
-		Style: style,
-
-		is_extend:  false,
-		is_refresh: true,
-
-		Height:    30,
-		Width:     0.0,
-		width_cur: 0.0,
-		width_tar: 0.0,
-
-		max_lines: 1.0,
-		font_size: unit.Sp(16),
-	}
-	self.fg = self.Style.Palette.Fg_2
-	self.fg = self.Style.Palette.Bg_2
-
-	return &self
-}
-
-func (self *ExtendBar) Layout(gtx layout.Context) layout.Dimensions {
-	label_text := material.Label(self.Style.Theme, self.font_size, self.Text)
-	label_text.MaxLines = self.max_lines
-	label_text.Color = self.fg
-
-	// 更新显示区域大小
-	if self.is_refresh {
-		self.is_refresh = false
-
-		macro := op.Record(gtx.Ops)
-		l := layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, label_text.Layout)
-		macro.Stop()
-		self.Width, self.Height = float64(l.Size.X), float64(l.Size.Y)
-	}
-
-	self.width_tar = Ternary(self.is_extend, self.Width, 0)
-	self.width_cur = Ternary(self.is_extend, self.width_cur, 0)
-
-	if self.width_cur == 0 && self.width_tar == 0 {
-		return D{Size: image.Pt(0, gtx.Dp(unit.Dp(self.Height)))}
-	}
-
-	// 裁切
-	trans_clip := clip.Rect(image.Rect(0, 0, int(self.width_cur), gtx.Dp(unit.Dp(self.Height)))).Push(gtx.Ops)
-
-	// 绘制显示内容
-	paint.FillShape(gtx.Ops, self.bg, clip.RRect{Rect: image.Rectangle{Max: image.Pt(int(self.Width), int(self.Height))},
-		SW: 0, NW: 0, SE: gtx.Dp(4), NE: gtx.Dp(4),
-	}.Op(gtx.Ops))
-
-	dims := layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, label_text.Layout)
-	trans_clip.Pop()
-
-	// 动画更新
-	self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.4)
-	return dims
-}
-
-// 设置显示内容
-func (self *ExtendBar) API_set_text(text string) *ExtendBar {
-	self.Text = text
-	self.is_refresh = true
-	return self
-}
-
-// 设置最大行数
-func (self *ExtendBar) API_set_max_lines(max_lines int) *ExtendBar {
-	self.max_lines = max_lines
-	self.is_refresh = true
-	return self
-}
-
-// 设置字体大小
-func (self *ExtendBar) API_set_font_size(font_size unit.Sp) *ExtendBar {
-	self.font_size = font_size
-	self.is_refresh = true
-	return self
-}
-
-// 设置颜色
-func (self *ExtendBar) API_set_color(fg, bg color.NRGBA) *ExtendBar {
-	self.fg = fg
-	self.bg = bg
 	return self
 }
 
@@ -399,9 +272,9 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 
 			self.sizes = append(self.sizes, lt.Size)
 
-			self.Width += float64(lt.Size.X)
-			self.Width += Ternary(i > 0, float64(li.Size.X), 0)
-			self.Height = float64(lt.Size.Y)
+			self.Width += float64(lt.Size.X)                    // 文本宽度
+			self.Width += Ternary(i > 0, float64(li.Size.X), 0) // 间隙宽度
+			self.Height = float64(lt.Size.Y)                    // 文本高度
 		}
 		self.Width += float64(int(self.spacer) * (len(self.tags) - 1))
 	}
@@ -410,6 +283,7 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 	self.width_cur = Ternary(self.is_extend, self.width_cur, 0)
 
 	if self.width_cur == 0 && self.width_tar == 0 {
+		self.Style.AniSys.Ease64(&self.width_cur, 1, &self.width_cur, self.width_tar, 0.4)
 		return D{Size: image.Pt(0, gtx.Dp(unit.Dp(self.Height)))}
 	}
 

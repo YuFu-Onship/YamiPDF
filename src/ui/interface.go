@@ -5,7 +5,7 @@ import (
 	"image"
 )
 
-// 内部接口
+// 内部接口,主要是Page
 type BridgeUI interface {
 	// 切换颜色模式
 	ToggleTheme()
@@ -23,6 +23,9 @@ type BridgeUI interface {
 
 	// 更改软件窗口文本
 	Set_title_text(text string)
+
+	// 更改当前页
+	Set_cur_page(id string)
 }
 
 // 外部项目接口

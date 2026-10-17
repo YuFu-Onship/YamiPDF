@@ -57,4 +57,7 @@ func (self *PageSettingInfo) Layout(gtx C) D {
 func (self *PageSettingInfo) OnEnter() {
 	self.info_space.Reset()
 }
-func (self *PageSettingInfo) OnExit() {}
+func (self *PageSettingInfo) OnExit()  {}
+func (self *PageSettingInfo) Destory() {}
+
+func (self *PageSettingInfo) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}

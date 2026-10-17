@@ -64,6 +64,9 @@ func (self *PageSettingCustom) Layout(gtx C) D {
 
 func (self *PageSettingCustom) OnEnter() { self.space.Reset() }
 func (self *PageSettingCustom) OnExit()  {}
+func (self *PageSettingCustom) Destory() {}
+
+func (self *PageSettingCustom) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}
 
 // 个性化参数 ------------------------------------
 
