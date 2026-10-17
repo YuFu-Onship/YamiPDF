@@ -2,6 +2,7 @@ package ui
 
 import (
 	"math"
+	"slices"
 	"time"
 
 	"gioui.org/op"
@@ -18,9 +19,6 @@ type AniSystem struct {
 	AniList   map[any]AniDriver
 	nextTick  time.Time
 
-	lastTime    time.Time
-	accumulator time.Duration // 时间累加器
-
 	last_time time.Time
 	timer     time.Duration
 }
@@ -35,23 +33,20 @@ func NewAniSystem() *AniSystem {
 
 func (self *AniSystem) Run(gtx C) {
 	// log.Println(len(self.AniList))
+
 	if self.AniList == nil || len(self.AniList) == 0 {
 		return
 	}
 
-	now := gtx.Now
-	if self.last_time.IsZero() {
-		self.last_time = now
-	}
+	now := time.Now()
+	self.last_time = Ternary(self.last_time.IsZero(), now, self.last_time) // 防止每次启动动画时, 第一帧动画出现异常增量
 
-	dt := now.Sub(self.last_time)
-	dt = min(dt, time.Millisecond*100)
+	dt := min(now.Sub(self.last_time), time.Millisecond*200)
 
 	self.last_time = now
 	self.timer += dt
 
 	const step = time.Second / 60
-
 	if self.timer >= step {
 		self.timer -= step
 		for tag, item := range self.AniList {
@@ -172,17 +167,25 @@ type EaseGroupDriver2 struct {
 	tar       []float64
 	precision float64
 	coe       float64
+	value     int
 }
 
 func (self *EaseGroupDriver2) Update() bool {
 	result := true
+
 	for i := range self.cur {
 		self.cur[i] += (self.tar[i] - self.cur[i]) * self.coe
+
 		if math.Abs(self.cur[i]-self.tar[i]) < self.precision {
 			self.cur[i] = self.tar[i]
+			self.value += 1
 		} else {
 			result = false
 		}
+	}
+
+	if self.value <= len(self.cur) {
+		return false
 	}
 
 	return result
@@ -190,22 +193,28 @@ func (self *EaseGroupDriver2) Update() bool {
 
 // 组缓动,不使用指针
 func (self *AniSystem) EaseGroup(tag any, cur []float64, tar []float64, precision float64, coe float64) []float64 {
-	return tar
+	if slices.Equal(cur, tar) {
+		if _, exist := self.AniList[tag].(*EaseGroupDriver2); exist {
+			delete(self.AniList, tag)
+		}
+		return tar
+	}
 
-	// if driver, exist := self.AniList[tag].(*EaseGroupDriver2); exist {
-	// 	driver.tar = tar
-	// 	driver.coe = coe
-	// 	driver.precision = precision
-	// 	return driver.cur
-	// } else {
-	// 	self.AniList[tag] = &EaseGroupDriver2{
-	// 		cur:       cur,
-	// 		tar:       tar,
-	// 		coe:       coe,
-	// 		precision: precision,
-	// 	}
-	// 	return cur
-	// }
+	if driver, exist := self.AniList[tag].(*EaseGroupDriver2); exist {
+		driver.tar = tar
+		driver.coe = coe
+		driver.precision = precision
+		return driver.cur
+	} else {
+		self.AniList[tag] = &EaseGroupDriver2{
+			cur:       cur,
+			tar:       tar,
+			coe:       coe,
+			precision: precision,
+			value:     0,
+		}
+		return cur
+	}
 }
 
 // 缓出64 计算增量 -----------------------------------------------

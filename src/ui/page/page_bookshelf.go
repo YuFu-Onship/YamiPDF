@@ -3,6 +3,7 @@ package page
 import (
 	rumia "app/src"
 	"app/src/ui"
+	"log"
 )
 
 type PageBookshelf struct {
@@ -11,6 +12,8 @@ type PageBookshelf struct {
 	bookshelf ui.BookShelf
 
 	bridge_ui ui.BridgeUI
+
+	root_manager *PageManager
 }
 
 func NewPageShelf(style *ui.Style) *PageBookshelf {
@@ -28,8 +31,8 @@ func NewPageShelf(style *ui.Style) *PageBookshelf {
 		API_add_book(rumia.BookInfo{Title: "miku miku oo ee"})
 
 	self.bookshelf.API_set_callback(func(book_info rumia.BookInfo) {
-		if self.bridge_ui != nil {
-			self.bridge_ui.Set_cur_page("pdf_viewer")
+		if self.root_manager != nil {
+			self.root_manager.API_get_last_manager().API_set_cur_page("pdf_viewer")
 		}
 	})
 
@@ -47,4 +50,9 @@ func (self *PageBookshelf) Destory() {}
 
 func (self *PageBookshelf) API_set_bridge_ui(bridge_ui ui.BridgeUI) {
 	self.bridge_ui = bridge_ui
+}
+
+func (self *PageBookshelf) API_set_parent_manager(pm interface{}) {
+	log.Println("inst books")
+	self.root_manager = pm.(*PageManager)
 }

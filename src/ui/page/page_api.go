@@ -3,21 +3,39 @@ package page
 import (
 	"app/src/ui"
 	"image"
+	"log"
 
-	"gioui.org/layout"
 	"gioui.org/op"
 )
+
+type ParentManager interface {
+	Set_parent(PageManager)
+}
 
 type PageBuilder func() PageAPI
 
 type PageAPI interface {
-	Layout(layout.Context) layout.Dimensions
+	Layout(C) D
 	OnEnter()
 	OnExit()
 	Destory()
 	API_set_bridge_ui(bridge_ui ui.BridgeUI)
+	API_set_parent_manager(interface{})
 }
 
+// 管理不同页面管理器的管理器 ----------------------------------------------------------
+type PageRouter struct {
+	managers map[string]*PageManager
+}
+
+func NewPageRouter() *PageRouter {
+	self := PageRouter{
+		managers: make(map[string]*PageManager),
+	}
+	return &self
+}
+
+// 页面管理器 --------------------------------------------------------------------------
 type PageEntry struct {
 	keep_alive bool
 	builder    PageBuilder
@@ -26,6 +44,7 @@ type PageEntry struct {
 
 type PageManager struct {
 	Style *ui.Style
+	id    string // 当前页面管理器的id,可选可不选
 
 	page_cur string
 	pages    map[string]*PageEntry
@@ -33,11 +52,14 @@ type PageManager struct {
 	is_change    bool
 	offset_y_tar float64
 	offset_y_cur float64
+
+	last_manager *PageManager
 }
 
 func NewPageManager(style *ui.Style) *PageManager {
 	self := PageManager{
 		Style: style,
+		id:    "",
 
 		page_cur: "",
 		pages:    make(map[string]*PageEntry),
@@ -75,6 +97,7 @@ func (self *PageManager) get_or_create_page(id string) PageAPI {
 
 	if entry.instance == nil && entry.builder != nil {
 		entry.instance = entry.builder()
+		entry.instance.API_set_parent_manager(self) // 传递自身,实现下级页面管理器访问上级
 	}
 	return entry.instance
 }
@@ -120,6 +143,12 @@ func (self *PageManager) API_set_cur_page(id string) *PageManager {
 	return self
 }
 
+// 设置当前页面管理器的id
+func (self *PageManager) API_set_id(id string) *PageManager {
+	self.id = id
+	return self
+}
+
 // 得到当前页面id
 func (self *PageManager) API_get_cur_id() string {
 	return self.page_cur
@@ -137,6 +166,14 @@ func (self *PageManager) Add_page(id string, keep_alive bool, builder PageBuilde
 // 给某个元素设置page主界面接口
 func (self *PageManager) API_set_bridge_ui(id string, bridge_ui ui.BridgeUI) {
 	if page, exist := self.pages[id]; exist {
-		page.instance.API_set_bridge_ui(bridge_ui)
+		if page.instance != nil {
+			page.instance.API_set_bridge_ui(bridge_ui)
+		}
 	}
+}
+
+// 得到上一级的页面管理器
+func (self *PageManager) API_get_last_manager() *PageManager {
+	log.Println(self.id)
+	return self.last_manager
 }

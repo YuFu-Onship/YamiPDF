@@ -3,6 +3,7 @@ package page
 import (
 	"app/assets"
 	"app/src/ui"
+	"log"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
@@ -10,7 +11,8 @@ import (
 
 type PageMain struct {
 	Style        *ui.Style
-	page_manager PageManager
+	page_manager *PageManager
+	root_manager *PageManager
 	side_bar     *ui.SideBar
 
 	bridge_ui ui.BridgeUI
@@ -37,19 +39,12 @@ func NewPageMain(style *ui.Style) *PageMain {
 	self.side_bar.API_add_btn("setting", false, true,
 		ui.NewSideBarButton(self.Style, assets.Icon_setting).
 			API_set_text(func() string { return ui.GetWord("setting", self.Style.Lang) }).API_set_callfn(func() { self.page_manager.API_set_cur_page("setting") }))
-
-	// API_add_btn("home", true, true, NewSideBarButton(self.Style, Icon_home).API_set_text(func() string { return GetWord("home", self.Style.Lang) }).API_set_callfn(func() {})).
 	self.side_bar.API_set_active("book_shelf")
 
-	self.page_manager = *NewPageManager(style)
-	// self.page_manager.API_add_page("book_shelf", NewPageShelf(style))
-	// self.page_manager.API_add_page("setting", NewPageSetting(style))
-
+	self.page_manager = NewPageManager(style).API_set_id("main")
 	self.page_manager.Add_page("book_shelf", true, func() PageAPI { return NewPageShelf(style) })
 	self.page_manager.Add_page("setting", false, func() PageAPI { return NewPageSetting(style) })
-
 	self.page_manager.API_set_cur_page("book_shelf")
-	self.page_manager.API_set_bridge_ui("book_shelf", self.bridge_ui)
 
 	return &self
 }
@@ -68,10 +63,17 @@ func (self *PageMain) Layout(gtx C) D {
 	)
 }
 
-func (self *PageMain) OnEnter() {}
+func (self *PageMain) OnEnter() {
+
+}
 func (self *PageMain) OnExit()  {}
 func (self *PageMain) Destory() {}
 
 func (self *PageMain) API_set_bridge_ui(bridge_ui ui.BridgeUI) {
 	self.bridge_ui = bridge_ui
+}
+
+func (self *PageMain) API_set_parent_manager(pm interface{}) {
+	log.Println("inst main")
+	self.root_manager = pm.(*PageManager)
 }

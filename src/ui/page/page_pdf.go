@@ -27,3 +27,4 @@ func (self *PagePDF) OnEnter() {
 func (self *PagePDF) OnExit()                                 {}
 func (self *PagePDF) Destory()                                {}
 func (self *PagePDF) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}
+func (self *PagePDF) API_set_parent_manager(pm interface{})   {}

@@ -26,6 +26,9 @@ type BookShelf struct {
 
 	width_spacer_tar float64
 	width_spacer_cur float64
+
+	px_per_dp_last float32
+	px_per_dp      float32
 }
 
 func NewBookShelf(style *Style) *BookShelf {
@@ -47,7 +50,6 @@ func NewBookShelf(style *Style) *BookShelf {
 }
 
 func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
-
 	total_books := len(self.book_cards)
 	if total_books == 0 {
 		return layout.Dimensions{}
@@ -73,15 +75,13 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 
 			// 左侧间距
 			if i == index_start {
-				// row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(16)}.Layout))
-				row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(self.width_spacer_cur)}.Layout))
+				row_children[row] = append(row_children[row], layout.Rigid(Spacer(int(self.width_spacer_cur), 0)))
 			}
 
 			// 中间书籍卡片布局
 			row_children[row] = append(row_children[row], layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4), Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, book_card.Layout)
 			}))
-			// row_children[row] = append(row_children[row], layout.Rigid(layout.Spacer{Width: unit.Dp(self.width_spacer_cur)}.Layout))
 
 			// 右侧间距
 			if i == index_end-1 {
@@ -273,7 +273,7 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 			self.sizes = append(self.sizes, lt.Size)
 
 			self.Width += float64(lt.Size.X)                    // 文本宽度
-			self.Width += Ternary(i > 0, float64(li.Size.X), 0) // 间隙宽度
+			self.Width += Ternary(i > 0, float64(li.Size.X), 0) // 间隔符宽度
 			self.Height = float64(lt.Size.Y)                    // 文本高度
 		}
 		self.Width += float64(int(self.spacer) * (len(self.tags) - 1))
@@ -296,7 +296,7 @@ func (self *ExtendTagBar) Layout(gtx layout.Context) layout.Dimensions {
 	return layout.Dimensions{Size: dims.Size}
 }
 
-// 创建标签元素
+// 创建标签文本元素
 func (self *ExtendTagBar) build_tags(gtx layout.Context) []layout.FlexChild {
 	children := []layout.FlexChild{}
 	for i, tag := range self.tags {

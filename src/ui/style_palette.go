@@ -56,6 +56,14 @@ var Deco_palette_dark DecoColorPalette = DecoColorPalette{
 	Decoicon_bg_press_close: color.NRGBA{R: 196, G: 43, B: 28, A: 255},   // 关闭背景按下 (深红 #C42B1C)
 }
 
+/*
+ * 配色设计规范:
+ * 1,2,3以此为三级配色,3层级最高
+ * Bg_3为该配色下的强调色
+ * Bg_1为统一背景色,暗色情况下保持一致, 亮色情况下保持一致
+ * Fg_1需要在Bg_1和Bg_2上都能够清晰显示(不考虑Bg_3,因为Bg_3上的清晰显示可能会是Fg_1的反色)
+ */
+
 var Palette_windows StylePalette = StylePalette{
 	Light: ColorPalette{
 		Fg_1: color.NRGBA{R: 0x1A, G: 0x1A, B: 0x1A, A: 255},

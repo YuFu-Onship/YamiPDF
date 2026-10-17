@@ -156,10 +156,10 @@ func (self *Style) color_update() {
 }
 
 func (self *Style) color_lerp(color_cur *TempFloatNRGBA, color_tar color.NRGBA) {
-	cr, cg, cb, ca := color_cur.R, color_cur.G, color_cur.B, color_cur.A
+	cr, cg, cb, _ := color_cur.R, color_cur.G, color_cur.B, color_cur.A
 	tr, tg, tb, ta := float64(color_tar.R), float64(color_tar.G), float64(color_tar.B), float64(color_tar.A)
 
-	result := self.AniSys.EaseGroup(color_cur, []float64{cr, cg, cb, ca}, []float64{tr, tg, tb, ta}, 0.1, 0.3)
+	result := self.AniSys.EaseGroup(color_cur, []float64{cr, cg, cb, ta}, []float64{tr, tg, tb, ta}, 1, 0.4)
 
 	color_cur.R = result[0]
 	color_cur.G = result[1]

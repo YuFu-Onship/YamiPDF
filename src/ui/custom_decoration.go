@@ -63,6 +63,8 @@ func (self *CustomDeco) Layout(gtx C) D {
 	gtx.Constraints.Max.Y = gtx.Dp(titleBarHeight)
 	gtx.Constraints.Min.Y = 0
 
+	text_space := Ternary(self.is_show_arrow, 4, 16)
+
 	if self.clickable_back.Clicked(gtx) {
 		self.fn_back()
 	}
@@ -89,7 +91,7 @@ func (self *CustomDeco) Layout(gtx C) D {
 			}
 		}),
 
-		layout.Rigid(layout.Spacer{Width: unit.Dp(16)}.Layout),
+		layout.Rigid(layout.Spacer{Width: unit.Dp(text_space)}.Layout),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			return self.Deco.LayoutMove(gtx, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min = gtx.Constraints.Max

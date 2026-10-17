@@ -45,6 +45,8 @@ func NewPage() *Page {
 		page_manager: NewPageManager(&style),
 	}
 
+	self.page_manager.API_set_id("page")
+
 	return &self
 }
 
@@ -207,3 +209,5 @@ func (self Page) ToggleTheme() {
 func (self *Page) Set_cur_page(id string) {
 	self.page_manager.API_set_cur_page(id)
 }
+
+func (self *Page) API_set_parent_manager(interface{}) {}

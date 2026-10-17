@@ -287,3 +287,118 @@ func (self *SideBarButton) API_get_state() modeSideBarButton {
 func (self *SideBarButton) API_resize() {
 	self.API_set_text(self.text)
 }
+
+// -----------------------------------------------------------------------
+
+// 宽侧边栏按钮
+type SideBarWideButton struct {
+	Style *Style
+
+	id   string
+	icon string
+	text func() string
+
+	bar_height_tar float64
+	bar_height_cur float64
+
+	clickable *widget.Clickable
+
+	is_active bool
+
+	callback func(string)
+}
+
+func NewSideBarWideButton(style *Style, id string) *SideBarWideButton {
+	self := SideBarWideButton{
+		Style:     style,
+		is_active: true,
+		id:        id,
+
+		icon: "",
+		text: func() string { return "" },
+
+		clickable: &widget.Clickable{},
+		callback:  func(s string) {},
+	}
+	return &self
+}
+
+func (self *SideBarWideButton) Layout(gtx C) D {
+	if self.clickable.Clicked(gtx) {
+		self.callback(self.id)
+	}
+
+	if self.clickable.Hovered() {
+	}
+
+	self.bar_height_tar = Ternary(self.is_active, 30.0, 0.0)
+	// self.bar_height_cur = Ternary(self.is_active, self.bar_height_tar, 0.0)
+	self.Style.AniSys.Ease64(&self.bar_height_cur, 1, &self.bar_height_cur, self.bar_height_tar, 0.4)
+
+	fg := self.Style.Palette.Fg_1
+	// fg := Ternary(self.is_active, self.Style.Palette.Fg_1, self.Style.Palette.Fg_1)
+	bg := Ternary(self.is_active, self.Style.Palette.Bg_2, self.Style.Palette.Bg_1)
+	bar_bg := self.Style.Palette.Bg_3
+
+	// 左侧指示条
+	fn_bar := func(gtx C) D {
+		width := gtx.Dp(4)
+		gtx.Constraints.Min.X = width
+		if !self.is_active {
+			return D{Size: gtx.Constraints.Min}
+		}
+		draw_rectangle_2(gtx, 0, -gtx.Dp(unit.Dp(self.bar_height_cur/2)), width, gtx.Dp(unit.Dp(self.bar_height_cur)), bar_bg, gtx.Dp(2))
+		return D{Size: gtx.Constraints.Min}
+	}
+
+	// 右侧按钮(图标_文本)
+	label_icon := material.H6(self.Style.Theme, self.icon)
+	label_text := material.H6(self.Style.Theme, self.text())
+	label_icon.Color = fg
+	label_text.Color = fg
+
+	btn := material.Button(self.Style.Theme, self.clickable, "")
+	btn.Background = bg
+
+	fn_btn := func(gtx C) D {
+		return layout.Stack{Alignment: layout.Center}.Layout(gtx,
+			layout.Expanded(btn.Layout),
+			layout.Stacked(func(gtx C) D {
+				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+					layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
+					layout.Rigid(label_icon.Layout),
+					layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
+					layout.Rigid(label_text.Layout),
+					layout.Flexed(1, layout.Spacer{}.Layout),
+				)
+			}),
+		)
+
+	}
+
+	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+		layout.Rigid(fn_bar),
+		layout.Rigid(layout.Spacer{Width: unit.Dp(2)}.Layout),
+		layout.Flexed(1, fn_btn),
+	)
+}
+
+func (self *SideBarWideButton) API_set_icon(icon string) *SideBarWideButton {
+	self.icon = icon
+	return self
+}
+
+func (self *SideBarWideButton) API_set_text(text func() string) *SideBarWideButton {
+	self.text = text
+	return self
+}
+
+func (self *SideBarWideButton) API_set_active(state bool) *SideBarWideButton {
+	self.is_active = state
+	return self
+}
+
+func (self *SideBarWideButton) API_set_callback(fn func(string)) *SideBarWideButton {
+	self.callback = fn
+	return self
+}
