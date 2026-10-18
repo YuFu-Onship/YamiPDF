@@ -3,7 +3,6 @@ package page
 import (
 	"app/src/ui"
 	"image"
-	"log"
 
 	"gioui.org/op"
 )
@@ -19,15 +18,15 @@ type PageAPI interface {
 	OnEnter()
 	OnExit()
 	Destory()
-	// API_set_bridge_ui(bridge_ui ui.BridgeUI)
-	// API_set_parent_manager(interface{})
 }
 
 // 管理不同页面管理器的管理器 ----------------------------------------------------------
 type PageRouter struct {
 	Style    *ui.Style
 	managers map[string]*PageManager
-	Tools    CommonPageTool
+
+	Tools       ui.BridgeUI
+	BridgeTrunk ui.BridgeTrunk
 }
 
 func NewPageRouter(style *ui.Style) *PageRouter {
@@ -39,15 +38,12 @@ func NewPageRouter(style *ui.Style) *PageRouter {
 }
 
 func (self *PageRouter) API_add_manager(id string, pages map[string]*PageEntry) *PageRouter {
-	// if _, exist := self.managers[id]; exist {
-	// 	// manager.api
-	// } else {
-	self.managers[id] = NewPageManager(self.Style).API_set_id(id).Add_pages(pages)
-	// for k,v:=range pages{
-	// 	self.managers[id].Add_page(k,v.keep_alive,v.)
-	// }
+	if manager, exist := self.managers[id]; exist {
+		manager.Add_pages(pages)
+	} else {
+		self.managers[id] = NewPageManager(self.Style).API_set_id(id).Add_pages(pages)
+	}
 
-	// }
 	return self
 }
 
@@ -128,22 +124,26 @@ func (self *PageManager) get_or_create_page(id string) PageAPI {
 	}
 
 	if entry.instance == nil && entry.builder != nil {
-
 		entry.instance = entry.builder()
-		// entry.instance.API_set_parent_manager(self) // 传递自身,实现下级页面管理器访问上级
 	}
 	return entry.instance
 }
 
-func (self *PageManager) OnEnter() {
-	// for _, page := range self.pages {
-	// 	page.instance.OnEnter()
-	// }
-}
-func (self *PageManager) OnExit() {
-	// for _, page := range self.pages {
-	// 	page.instance.OnExit()
-	// }
+// func (self *PageManager) OnEnter() {
+// 	for _, page := range self.pages {
+// 		page.instance.OnEnter()
+// 	}
+// }
+// func (self *PageManager) OnExit() {
+// 	for _, page := range self.pages {
+// 		page.instance.OnExit()
+// 	}
+// }
+
+// 设置当前页面管理器的id
+func (self *PageManager) API_set_id(id string) *PageManager {
+	self.id = id
+	return self
 }
 
 // 跳转到对应的页面
@@ -161,6 +161,7 @@ func (self *PageManager) API_set_cur_page(id string) *PageManager {
 		if old_entry.keep_alive {
 			old_entry.instance.OnExit()
 		} else {
+			old_entry.instance.Destory()
 			old_entry.instance = nil
 		}
 	}
@@ -176,43 +177,19 @@ func (self *PageManager) API_set_cur_page(id string) *PageManager {
 	return self
 }
 
-// 设置当前页面管理器的id
-func (self *PageManager) API_set_id(id string) *PageManager {
-	self.id = id
-	return self
-}
-
 // 得到当前页面id
 func (self *PageManager) API_get_cur_id() string {
 	return self.page_cur
 }
 
-// 注册页面
-func (self *PageManager) Add_page(id string, keep_alive bool, builder PageBuilder) *PageManager {
-	self.pages[id] = &PageEntry{
-		builder:    builder,
-		keep_alive: keep_alive,
-	}
-	return self
-}
-
 // 添加数个页面
 func (self *PageManager) Add_pages(pages map[string]*PageEntry) *PageManager {
-	self.pages = pages
-	return self
-}
-
-// 给某个元素设置page主界面接口
-func (self *PageManager) API_set_bridge_ui(id string, bridge_ui ui.BridgeUI) {
-	if page, exist := self.pages[id]; exist {
-		if page.instance != nil {
-			// page.instance.API_set_bridge_ui(bridge_ui)
-		}
+	if self.pages == nil {
+		self.pages = make(map[string]*PageEntry)
 	}
-}
 
-// 得到上一级的页面管理器
-func (self *PageManager) API_get_last_manager() *PageManager {
-	log.Println(self.id)
-	return self.last_manager
+	for k, v := range pages {
+		self.pages[k] = v
+	}
+	return self
 }

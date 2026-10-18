@@ -342,6 +342,7 @@ func (self *RenderManager) render_inst(inst *RenderInstance) {
 				// 				// 3. 转换为 MB
 				// 				sizeInMB := float64(bytesCount) / (1024 * 1024)
 				// 				fmt.Printf("图像分辨率: %dx%d, 内存占用: %.2f MB\n", width, height, sizeInMB)
+
 				img = nil
 			}
 

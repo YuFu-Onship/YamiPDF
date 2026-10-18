@@ -64,7 +64,7 @@ func (self *BookShelf) Layout(gtx layout.Context) layout.Dimensions {
 	// 每行左侧的间隙,/2时居中, /4时靠左
 	self.width_spacer_tar = float64(max(0, (gtx.Constraints.Max.X-cols*card_width)/2))
 	self.width_spacer_tar = Ternary(row_count <= 1, 0, self.width_spacer_tar)
-	self.Style.AniSys.Ease64(&self.width_spacer_cur, 1, &self.width_spacer_cur, self.width_spacer_tar, 0.15)
+	self.Style.AniSys.Ease64(&self.width_spacer_cur, 1, &self.width_spacer_cur, self.width_spacer_tar, 0.4)
 
 	for row := range row_count {
 		index_start := row * cols

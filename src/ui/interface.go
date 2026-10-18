@@ -16,16 +16,13 @@ type BridgeUI interface {
 	IsWinSizeChange() bool
 
 	// 请求窗口级重绘
-	WindowRefresh()
+	RefreshWindow()
 
 	// 更改标题栏文本
 	Set_deco_text(text string)
 
 	// 更改软件窗口文本
 	Set_title_text(text string)
-
-	// 更改当前页
-	Set_cur_page(id string)
 }
 
 // 外部项目接口

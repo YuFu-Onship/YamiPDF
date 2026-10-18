@@ -22,7 +22,7 @@ func NewPageSettingInfo(style *ui.Style) *PageSettingInfo {
 
 	self.text_list = [][]string{
 		[]string{"version", "v0.1"},
-		[]string{"developer", "yufu"},
+		[]string{"developer", "me"},
 	}
 
 	return &self
@@ -57,6 +57,7 @@ func (self *PageSettingInfo) Layout(gtx C) D {
 func (self *PageSettingInfo) OnEnter() {
 	self.info_space.Reset()
 }
+
 func (self *PageSettingInfo) OnExit()  {}
 func (self *PageSettingInfo) Destory() {}
 

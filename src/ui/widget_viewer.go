@@ -729,7 +729,7 @@ func (self *PDFViewer) is_update_pages(pages []int) {
 		if !keep_pages[k] {
 			if v != nil {
 				v.Destory()
-				self.bridge_ui.WindowRefresh()
+				self.bridge_ui.RefreshWindow()
 			}
 			delete(self.buffer_page, k)
 		}
@@ -1035,7 +1035,7 @@ func (self *PDFViewer) callback_apply_full(page int, dpi float64, mode_shader mo
 				}
 				info.Widget.Src.Filter = paint.FilterNearest
 			}
-			self.bridge_ui.WindowRefresh()
+			self.bridge_ui.RefreshWindow()
 		} else {
 			log.Println("page info not exist")
 		}
@@ -1066,7 +1066,7 @@ func (self *PDFViewer) callback_apply_tile(page int, dpi float64, rect *types.Re
 				}
 			}
 
-			self.bridge_ui.WindowRefresh()
+			self.bridge_ui.RefreshWindow()
 		} else {
 			log.Println("not exist")
 		}

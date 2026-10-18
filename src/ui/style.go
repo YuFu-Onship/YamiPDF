@@ -141,7 +141,7 @@ func (self *Style) apply() {
 	self.Palette.Fg_3 = self.Palette_tar.Fg_3
 
 	if self.Bridge_ui != nil {
-		self.Bridge_ui.WindowRefresh()
+		self.Bridge_ui.RefreshWindow()
 	}
 }
 

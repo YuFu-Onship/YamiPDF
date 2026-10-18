@@ -39,8 +39,8 @@ func NewPageSetting(style *ui.Style, page_router *PageRouter) *PageSetting {
 
 	self.page_router.
 		API_add_manager("setting", map[string]*PageEntry{
-			"custom": &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageSettingCustom(style, self.page_router) }},
-			"info":   &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageSettingInfo(style) }},
+			"custom": &PageEntry{keep_alive: true, builder: func() PageAPI { return NewPageSettingCustom(style, self.page_router) }},
+			"info":   &PageEntry{keep_alive: true, builder: func() PageAPI { return NewPageSettingInfo(style) }},
 		}).
 		API_get_manager("setting").API_set_cur_page("custom")
 

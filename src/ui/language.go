@@ -37,17 +37,21 @@ var TransTable = map[string]Word{
 	"palette":   {CN: "色板", EN: "Palette", JP: "パレット"},
 	"dark_mode": {"暗色模式", "Dark Mode", ""},
 
-	// 设置_信息
-	"version":   {"版本", "Version", ""},
-	"developer": {"开发者", "Developer", ""},
-	"yufu":      {"雨符", "YUFU", "YUFU"},
-	"website":   {"网站", "Website", ""},
-
 	// 配色
 	"koishi": {CN: "古明地恋", EN: "Koishi", JP: "古明地こいし"},
 
+	// 设置_信息
+	"version":   {"版本", "Version", "バージョン"},
+	"developer": {"开发者", "Developer", "開発者"},
+	"yufu":      {"雨符", "YUFU", "YUFU"},
+	"website":   {"网站", "Website", "ウェブサイト"},
+
 	// 其他
-	"software_desc": {"轻量,美观,快速的PDF阅读器"},
+	"software_desc": {
+		"轻量,美观,快速的PDF阅读器",
+		"A lightweight, attractive, and fast PDF reader",
+		"軽量で美しく、高速なPDFリーダー",
+	},
 }
 
 func GetWord(id string, lang Language) string {

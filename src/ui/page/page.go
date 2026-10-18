@@ -82,17 +82,22 @@ func (self *Page) draw(w *app.Window) error {
 		self.Style.Theme.Shaper = shaper
 	}
 
-	self.page_router.API_add_manager("page", map[string]*PageEntry{
-		"main":       &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageMain(self.Style, self.page_router) }},
-		"viewer_pdf": &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPagePDF(self.Style) }},
-	})
-	self.page_router.API_get_manager("page").API_set_cur_page("main")
+	self.page_router.
+		API_add_manager("page", map[string]*PageEntry{
+			"main":       &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageMain(self.Style, self.page_router) }},
+			"viewer_pdf": &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPagePDF(self.Style, self.page_router) }},
+		}).
+		API_get_manager("page").
+		API_set_cur_page("main")
 
 	self.Deco.API_set_arrow_callback(func() {
 		self.page_router.API_get_manager("page").API_set_cur_page("main")
 	})
 
 	self.page_router.Tools = self
+	self.page_router.BridgeTrunk = self.bridge_trunk
+
+	self.Style.Bridge_ui = self
 
 	// self.page_manager.API_add_page("main", NewPageMain(self.Style))
 	// 	self.page_manager.Add_page("main", true, func() PageAPI { return NewPageMain(self.Style) })
