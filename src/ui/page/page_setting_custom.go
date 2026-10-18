@@ -17,7 +17,9 @@ type CustomConfig struct {
 }
 
 type PageSettingCustom struct {
-	Style         *ui.Style
+	Style       *ui.Style
+	page_router *PageRouter
+
 	custom_config CustomConfig
 	space         *ui.AniEaseList
 
@@ -27,10 +29,11 @@ type PageSettingCustom struct {
 	palette_enum     widget.Enum
 }
 
-func NewPageSettingCustom(style *ui.Style) *PageSettingCustom {
+func NewPageSettingCustom(style *ui.Style, page_router *PageRouter) *PageSettingCustom {
 	self := PageSettingCustom{
-		Style: style,
-		space: ui.NewAniEaseList(style, ui.AniEaseList{Num: 3, Space: 100, Tigger_percent: 0.3, Coe: 0.3}),
+		Style:       style,
+		page_router: page_router,
+		space:       ui.NewAniEaseList(style, ui.AniEaseList{Num: 3, Space: 100, Tigger_percent: 0.3, Coe: 0.3}),
 	}
 	self.init_language()
 	self.init_palette()
@@ -42,16 +45,8 @@ func (self *PageSettingCustom) Layout(gtx C) D {
 	self.space.Layout(gtx)
 
 	widgets := []layout.FlexChild{}
-	widgets = append(widgets, layout.Rigid(func(gtx C) D {
-		// gtx.Constraints.Max.Y = gtx.Dp(40)
-		// gtx.Constraints.Min.Y = gtx.Dp(40)
-		return layout.Inset{Right: unit.Dp(16)}.Layout(gtx, self.layout_language)
-	}))
-	widgets = append(widgets, layout.Rigid(func(gtx C) D {
-		// gtx.Constraints.Max.Y = gtx.Dp(40)
-		// gtx.Constraints.Min.Y = gtx.Dp(40)
-		return layout.Inset{Right: unit.Dp(16)}.Layout(gtx, self.layout_palette)
-	}))
+	widgets = append(widgets, layout.Rigid(func(gtx C) D { return layout.Inset{Right: unit.Dp(16)}.Layout(gtx, self.layout_language) }))
+	widgets = append(widgets, layout.Rigid(func(gtx C) D { return layout.Inset{Right: unit.Dp(16)}.Layout(gtx, self.layout_palette) }))
 
 	children := make([]layout.FlexChild, 0, len(widgets)*2)
 	for i, widget := range widgets {
@@ -65,8 +60,6 @@ func (self *PageSettingCustom) Layout(gtx C) D {
 func (self *PageSettingCustom) OnEnter() { self.space.Reset() }
 func (self *PageSettingCustom) OnExit()  {}
 func (self *PageSettingCustom) Destory() {}
-
-func (self *PageSettingCustom) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}
 
 // 个性化参数 ------------------------------------
 

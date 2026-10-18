@@ -10,63 +10,46 @@ import (
 )
 
 type PageSetting struct {
-	Style        *ui.Style
-	page_manager *PageManager
+	Style       *ui.Style
+	page_router *PageRouter
 
 	menus      []string
 	menu_space ui.AniEaseList
 	menu_cur   string
+	menu_btns  map[string]*ui.SideBarWideButton
 
-	menu_btns map[string]*ui.SideBarWideButton
-
-	text_index map[string][]string
+	icon_index map[string]string // [0] 图标索引
 
 	bg_idle, fg_idle     color.NRGBA
 	bg_active, fg_active color.NRGBA
 }
 
-func NewPageSetting(style *ui.Style) *PageSetting {
+func NewPageSetting(style *ui.Style, page_router *PageRouter) *PageSetting {
 	self := PageSetting{
-		Style:        style,
-		page_manager: NewPageManager(style),
+		Style:       style,
+		page_router: page_router,
 
-		menus:      []string{},
+		menus:      []string{"custom", "info"},
+		menu_cur:   "custom",
 		menu_space: *ui.NewAniEaseList(style, ui.AniEaseList{Coe: 0.3, Num: 2, Space: 100, Tigger_percent: 0.3}),
-		menu_cur:   "",
 		menu_btns:  map[string]*ui.SideBarWideButton{},
-		// menu_clickables: map[string]*widget.Clickable{},
-		text_index: map[string][]string{},
+
+		icon_index: map[string]string{"custom": assets.Icon_palette, "info": assets.Icon_info},
 	}
 
-	self.page_manager.API_set_id("setting")
-
-	self.menus = []string{"custom", "info"}
-	self.menu_cur = "custom"
-
-	self.text_index["custom"] = []string{assets.Icon_palette}
-	self.text_index["info"] = []string{assets.Icon_info}
-
-	// self.page_manager.Add_page("custom", false, func() PageAPI { return NewPageSettingCustom(style) })
-	// self.page_manager.Add_page("info", false, func() PageAPI { return NewPageSettingInfo(style) })
-	self.page_manager.API_set_cur_page(self.menu_cur)
+	self.page_router.
+		API_add_manager("setting", map[string]*PageEntry{
+			"custom": &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageSettingCustom(style, self.page_router) }},
+			"info":   &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageSettingInfo(style) }},
+		}).
+		API_get_manager("setting").API_set_cur_page("custom")
 
 	// 初始化侧边栏按钮
 	for _, text := range self.menus {
 		self.menu_btns[text] = ui.NewSideBarWideButton(style, text).
 			API_set_text(func() string { return ui.GetWord(text, self.Style.Lang) }).
-			API_set_icon(self.text_index[text][0])
-
-		self.menu_btns[text].API_set_callback(func(id string) {
-			self.menu_cur = id
-			self.page_manager.API_set_cur_page(id)
-			for _, k := range self.menus {
-				self.menu_btns[k].API_set_active(k == self.menu_cur)
-			}
-		})
-
-	}
-	for _, k := range self.menus {
-		self.menu_btns[k].API_set_active(k == self.menu_cur)
+			API_set_icon(self.icon_index[text]).
+			API_set_callback(self.callback_sidebtn)
 	}
 
 	return &self
@@ -79,9 +62,9 @@ func (self *PageSetting) Layout(gtx C) D {
 	self.fg_active = self.Style.Palette.Fg_3
 
 	dims := layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-		layout.Rigid(self.menu),
+		layout.Rigid(self.layout_menu),
 		layout.Rigid(layout.Spacer{Width: unit.Dp(12)}.Layout),
-		layout.Flexed(1, self.page_manager.Layout),
+		layout.Flexed(1, self.page_router.API_get_manager("setting").Layout),
 	)
 	return dims
 }
@@ -89,21 +72,34 @@ func (self *PageSetting) Layout(gtx C) D {
 func (self *PageSetting) OnEnter() {
 	if len(self.menus) > 0 {
 		self.menu_cur = self.menus[0]
-		self.page_manager.API_set_cur_page(self.menus[0])
+		self.jump(self.menus[0])
+
+		for id, btn := range self.menu_btns {
+			btn.API_set_active(id == self.menus[0])
+		}
 	}
 	self.menu_space.Reset()
-	self.page_manager.OnEnter()
-
 }
-func (self *PageSetting) OnExit() {
-	self.page_manager.OnExit()
-}
-func (self *PageSetting) Destory()                                {}
-func (self *PageSetting) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}
-func (self *PageSetting) API_set_parent_manager(interface{})      {}
 
-// 左侧侧边栏
-func (self *PageSetting) menu(gtx C) D {
+func (self *PageSetting) OnExit()  {}
+func (self *PageSetting) Destory() {}
+
+// 页面跳转
+func (self *PageSetting) jump(id string) {
+	self.page_router.API_get_manager("setting").API_set_cur_page(id)
+}
+
+// 侧边栏按钮回调
+func (self *PageSetting) callback_sidebtn(id string) {
+	self.menu_cur = id
+	self.jump(id)
+	for menu, btn := range self.menu_btns {
+		btn.API_set_active(id == menu)
+	}
+}
+
+// 左侧侧边栏布局
+func (self *PageSetting) layout_menu(gtx C) D {
 	gtx.Constraints.Max.X = gtx.Dp(150)
 	children := []layout.FlexChild{}
 
@@ -114,6 +110,5 @@ func (self *PageSetting) menu(gtx C) D {
 	}
 
 	self.menu_space.Layout(gtx)
-
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
 }

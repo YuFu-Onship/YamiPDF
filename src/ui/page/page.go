@@ -31,7 +31,9 @@ type Page struct {
 	is_win_change bool
 	appwindow     *app.Window
 
-	page_manager *PageManager
+	page_router *PageRouter
+
+	// page_manager *PageManager
 }
 
 func NewPage() *Page {
@@ -40,12 +42,10 @@ func NewPage() *Page {
 	style.SetColorMode(true)
 
 	self := Page{
-		Deco:         ui.NewCustomDeco(&style),
-		Style:        &style,
-		page_manager: NewPageManager(&style),
+		Deco:        ui.NewCustomDeco(&style),
+		Style:       &style,
+		page_router: NewPageRouter(&style),
 	}
-
-	self.page_manager.API_set_id("page")
 
 	return &self
 }
@@ -75,7 +75,6 @@ func (self *Page) draw(w *app.Window) error {
 
 	self.Style.SetColorMode(true)
 	self.Style.Lang = ui.CN
-	self.Style.Bridge_ui = self
 
 	// 加载文字
 	if fonts, err := self.load_fonts(); err == nil {
@@ -83,12 +82,24 @@ func (self *Page) draw(w *app.Window) error {
 		self.Style.Theme.Shaper = shaper
 	}
 
-	// self.page_manager.API_add_page("main", NewPageMain(self.Style))
-	self.page_manager.Add_page("main", true, func() PageAPI { return NewPageMain(self.Style) })
-	self.page_manager.Add_page("pdf_viewer", false, func() PageAPI { return NewPagePDF(self.Style) })
-	self.page_manager.API_set_cur_page("main")
+	self.page_router.API_add_manager("page", map[string]*PageEntry{
+		"main":       &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPageMain(self.Style, self.page_router) }},
+		"viewer_pdf": &PageEntry{keep_alive: false, builder: func() PageAPI { return NewPagePDF(self.Style) }},
+	})
+	self.page_router.API_get_manager("page").API_set_cur_page("main")
 
-	self.page_manager.API_set_bridge_ui("main", self)
+	self.Deco.API_set_arrow_callback(func() {
+		self.page_router.API_get_manager("page").API_set_cur_page("main")
+	})
+
+	self.page_router.Tools = self
+
+	// self.page_manager.API_add_page("main", NewPageMain(self.Style))
+	// 	self.page_manager.Add_page("main", true, func() PageAPI { return NewPageMain(self.Style) })
+	// 	self.page_manager.Add_page("pdf_viewer", false, func() PageAPI { return NewPagePDF(self.Style) })
+	// 	self.page_manager.API_set_cur_page("main")
+	//
+	// 	self.page_manager.API_set_bridge_ui("main", self)
 
 	// pdf阅读器
 	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
@@ -124,12 +135,15 @@ func (self *Page) draw(w *app.Window) error {
 			self.Style.Update(gtx)
 			self.Deco.Actions(gtx, w)
 
-			deco_back_state := Ternary(self.page_manager.API_get_cur_id() == "main", false, true)
-			self.Deco.API_set_back(deco_back_state)
+			self.Deco.API_set_show_arrow(self.page_router.API_get_manager_cur_page_id("page") != "main")
+
+			// deco_back_state := Ternary(self.page_manager.API_get_cur_id() == "main", false, true)
+			// self.Deco.API_set_back(deco_back_state)
 
 			layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 				layout.Rigid(self.Deco.Layout),
-				layout.Flexed(1, self.page_manager.Layout),
+				layout.Flexed(1, self.page_router.API_get_manager("page").Layout),
+				// layout.Flexed(1, self.page_manager.Layout),
 			)
 
 			self.Style.AniSys.Run(gtx)
@@ -173,7 +187,7 @@ func (self *Page) load_fonts() ([]font.FontFace, error) {
 // 更改自定义标题栏文本
 func (self Page) Set_deco_text(text string) {
 	self.Deco.API_set_text(text)
-	self.WindowRefresh()
+	self.RefreshWindow()
 }
 
 // 更改原生标题栏文本
@@ -183,8 +197,10 @@ func (self *Page) Set_title_text(text string) {
 	}
 }
 
-func (self Page) WindowRefresh() {
-	self.appwindow.Invalidate()
+func (self Page) RefreshWindow() {
+	if self.appwindow != nil {
+		self.appwindow.Invalidate()
+	}
 }
 
 // 窗口大小是否变动
@@ -203,11 +219,6 @@ func (self *Page) API_set_trunk(trunk ui.BridgeTrunk) *Page {
 // 切换颜色模式
 func (self Page) ToggleTheme() {
 	self.Style.Toggle()
-}
-
-// 设置界面
-func (self *Page) Set_cur_page(id string) {
-	self.page_manager.API_set_cur_page(id)
 }
 
 func (self *Page) API_set_parent_manager(interface{}) {}

@@ -34,9 +34,9 @@ type CustomDeco struct {
 
 	text string
 
-	is_show_arrow  bool              // 是否显示返回按钮
-	fn_back        func()            // 点击返回按钮后的回调
-	clickable_back *widget.Clickable // 返回按钮
+	is_show_arrow   bool              // 是否显示返回按钮
+	clickable_arrow *widget.Clickable // 返回按钮
+	callback_arrow  func()            // 点击返回按钮后的回调
 }
 
 func NewCustomDeco(style *Style) *CustomDeco {
@@ -50,9 +50,9 @@ func NewCustomDeco(style *Style) *CustomDeco {
 
 		text: "",
 
-		is_show_arrow:  true,
-		clickable_back: &widget.Clickable{},
-		fn_back:        func() {},
+		is_show_arrow:   true,
+		clickable_arrow: &widget.Clickable{},
+		callback_arrow:  func() {},
 	}
 	return &self
 }
@@ -65,8 +65,8 @@ func (self *CustomDeco) Layout(gtx C) D {
 
 	text_space := Ternary(self.is_show_arrow, 4, 16)
 
-	if self.clickable_back.Clicked(gtx) {
-		self.fn_back()
+	if self.clickable_arrow.Clicked(gtx) {
+		self.callback_arrow()
 	}
 
 	return layout.Flex{
@@ -78,7 +78,7 @@ func (self *CustomDeco) Layout(gtx C) D {
 			if self.is_show_arrow {
 				return self.actionButton(
 					gtx,
-					self.clickable_back,
+					self.clickable_arrow,
 					self.Style.Palette_deco.Decoicon_fg_idle,
 					self.Style.Palette_deco.Decoicon_fg_hover,
 					self.Style.Palette_deco.Decoicon_fg_press,
@@ -247,8 +247,13 @@ func (self *CustomDeco) API_set_text(text string) {
 // 启用返回按钮
 //   - true 显示返回按钮
 //   - false 不显示返回按钮
-func (self *CustomDeco) API_set_back(state bool) {
+func (self *CustomDeco) API_set_show_arrow(state bool) {
 	self.is_show_arrow = state
+}
+
+// 设置返回按钮功能
+func (self *CustomDeco) API_set_arrow_callback(fn func()) {
+	self.callback_arrow = fn
 }
 
 // 标题栏图标 ---------------------------------------------------------------------
