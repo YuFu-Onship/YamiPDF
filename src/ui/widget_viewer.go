@@ -1276,7 +1276,7 @@ func (self *PDFViewer) apply_center_scale(page int) float64 {
 }
 
 func (self *PDFViewer) apply_center_pos(page int) (float64, float64) {
-	log.Println(page)
+	// log.Println(page)
 	row_w, _ := self.calc_row_page_size(page)
 	area_w, area_h := float64(self.viewer_area.X), float64(self.viewer_area.Y)
 

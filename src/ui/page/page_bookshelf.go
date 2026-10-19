@@ -39,7 +39,7 @@ func NewPageShelf(style *ui.Style, page_router *PageRouter) *PageBookshelf {
 	self.list.Axis = layout.Vertical
 
 	self.book_cards = append(self.book_cards, ui.NewBookCard(style).API_set_book_info(rumia.BookInfo{Title: "miku miku oo ee"}).API_set_callfn(self.callback_card))
-	self.book_cards = append(self.book_cards, ui.NewBookCard(style).API_set_book_info(rumia.BookInfo{Title: "miku miku oo ee"}))
+	self.book_cards = append(self.book_cards, ui.NewBookCard(style).API_set_book_info(rumia.BookInfo{Title: "miku miku oo ee"}).API_set_callfn(self.callback_card))
 	self.book_cards = append(self.book_cards, ui.NewBookCard(style).API_set_book_info(rumia.BookInfo{Title: "miku miku oo ee"}))
 	self.book_cards = append(self.book_cards, ui.NewBookCard(style).API_set_book_info(rumia.BookInfo{Title: "miku miku oo ee"}))
 	self.book_cards = append(self.book_cards, ui.NewBookCard(style).API_set_book_info(rumia.BookInfo{Title: "miku miku oo ee"}))

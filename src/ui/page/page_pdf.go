@@ -2,6 +2,7 @@ package page
 
 import (
 	"app/src/ui"
+	"runtime"
 )
 
 type PagePDF struct {
@@ -18,8 +19,8 @@ func NewPagePDF(style *ui.Style, page_router *PageRouter) *PagePDF {
 		page_router: page_router,
 	}
 
-	pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
-	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.5 (Kamome Shirahama).pdf"
+	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
+	pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.5 (Kamome Shirahama).pdf"
 	// pdf_path := "E:/Users/YUFU/Documents/Books/单页.pdf"
 
 	doc_id, _ := self.page_router.BridgeTrunk.Add_new_document(pdf_path)
@@ -45,6 +46,7 @@ func (self *PagePDF) OnExit() {
 }
 func (self *PagePDF) Destory() {
 	self.page_router.BridgeTrunk.Delete_document(self.id)
+	runtime.GC()
 }
 func (self *PagePDF) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}
 func (self *PagePDF) API_set_parent_manager(pm interface{})   {}

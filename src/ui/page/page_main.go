@@ -3,6 +3,7 @@ package page
 import (
 	"app/assets"
 	"app/src/ui"
+	"runtime"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
@@ -78,6 +79,7 @@ func (self *PageMain) Destory() {}
 
 func (self *PageMain) jump(id string) {
 	self.page_router.API_get_manager("main").API_set_cur_page(id)
+	runtime.GC()
 }
 
 func (self *PageMain) API_set_bridge_ui(bridge_ui ui.BridgeUI) {

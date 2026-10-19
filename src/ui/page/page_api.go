@@ -158,11 +158,13 @@ func (self *PageManager) API_set_cur_page(id string) *PageManager {
 
 	// 清理上一个界面
 	if old_entry, exist := self.pages[self.page_cur]; exist {
-		if old_entry.keep_alive {
-			old_entry.instance.OnExit()
-		} else {
-			old_entry.instance.Destory()
-			old_entry.instance = nil
+		if old_entry.instance != nil {
+			if old_entry.keep_alive {
+				old_entry.instance.OnExit()
+			} else {
+				old_entry.instance.Destory()
+				old_entry.instance = nil
+			}
 		}
 	}
 

@@ -328,8 +328,7 @@ func (self *SideBarWideButton) Layout(gtx C) D {
 		self.callback(self.id)
 	}
 
-	if self.clickable.Hovered() {
-	}
+	is_hoverd := self.clickable.Hovered()
 
 	self.bar_height_tar = Ternary(self.is_active, 30.0, 0.0)
 	// self.bar_height_cur = Ternary(self.is_active, self.bar_height_tar, 0.0)
@@ -356,6 +355,9 @@ func (self *SideBarWideButton) Layout(gtx C) D {
 	label_text := material.H6(self.Style.Theme, self.text())
 	label_icon.Color = fg
 	label_text.Color = fg
+
+	label_icon.Font.Style = Ternary(self.is_active, font.Italic, font.Regular)
+	label_icon.Font.Style = Ternary(is_hoverd, font.Italic, label_icon.Font.Style)
 
 	btn := material.Button(self.Style.Theme, self.clickable, "")
 	btn.Background = bg
