@@ -34,7 +34,7 @@ func NewAniEaseList(style *Style, params AniEaseList) *AniEaseList {
 	return &self
 }
 
-// 更新参数, 不返回任何值, 习惯性使用Layout, 而非Update
+// 更新参数, 不返回任何值, 习惯性使用Layout来更新, 而非Update
 func (self *AniEaseList) Layout(gtx C) D {
 	if len(self.list_cur) == 0 {
 		return D{}

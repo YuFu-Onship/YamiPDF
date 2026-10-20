@@ -331,12 +331,12 @@ func (self *PDFViewer) Layout(gtx C) D {
 	// 	}
 
 	// 界面部分
-	self.dpi = self.get_dpi()
+	self.dpi = self.calc_dpi()
 
 	// 更新缓冲区
-	if self.viewer_area.Y != 0 {
-		self.update_buffer()
-	}
+	// if self.viewer_area.Y != 0 {
+	self.update_buffer()
+	// }
 
 	// viewer 绘制布局
 	dims := layout.Flex{Axis: layout.Vertical, Alignment: layout.Middle}.Layout(gtx,
@@ -354,7 +354,7 @@ func (self *PDFViewer) Layout(gtx C) D {
 		layout.Flexed(1, self.layout_viewer),
 	)
 
-	// 一些参数的限定值
+	// 限定一些参数的
 	self.scale_tar = math.Round(self.scale_tar*100) / 100
 
 	// 动画效果
@@ -634,7 +634,7 @@ func (self *PDFViewer) get_page_box(page int) (float64, float64, float64, float6
 
 // 更新缓冲区
 func (self *PDFViewer) update_buffer() {
-	self.dpi = self.get_dpi()
+	self.dpi = self.calc_dpi()
 	pages := self.calc_page_list()
 
 	self.index_focus = self.index_center
@@ -725,6 +725,7 @@ func (self *PDFViewer) is_update_pages(pages []int) {
 		keep_pages[p] = true
 	}
 
+	// 从页缓存中删除不需要的页
 	for k, v := range self.buffer_page {
 		if !keep_pages[k] {
 			if v != nil {
@@ -1004,8 +1005,8 @@ func (self *PDFViewer) get_page_pos_on_viewer_cur(page int) (float64, float64, f
 	return start_x, start_y, end_x, end_y
 }
 
-// 得到dpi
-func (self *PDFViewer) get_dpi() float64 {
+// 计算dpi
+func (self *PDFViewer) calc_dpi() float64 {
 	scale := math.Round(self.scale_tar*10) / 10
 	dpi := 72.0 * self.base_height * scale / float64(self.buffer_size[self.index_focus].Dy())
 	dpi = math.Round(math.Min(1000, dpi))

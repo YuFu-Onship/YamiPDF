@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gen2brain/go-fitz"
-	"github.com/google/uuid"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
@@ -211,15 +210,12 @@ func (self *RenderInstance) release_memory() {
 type RenderManager struct {
 	mu    sync.RWMutex
 	insts map[string]*RenderInstance
-
-	pointer_dict map[any]bool
 }
 
 // 创建新的渲染管理器
 func NewRenderManager() *RenderManager {
 	self := &RenderManager{
-		insts:        map[string]*RenderInstance{},
-		pointer_dict: make(map[any]bool),
+		insts: map[string]*RenderInstance{},
 	}
 	return self
 }
@@ -229,8 +225,9 @@ func (self *RenderManager) Run() {}
 
 // 添加新的渲染实例
 func (self *RenderManager) Add_new_document(doc_path string) (string, error) {
-	id := uuid.New().String()
+	// id := uuid.New().String()
 
+	id := doc_path
 	inst := NewRenderInstance(doc_path)
 
 	self.mu.Lock()
@@ -283,21 +280,7 @@ func (self *RenderManager) render_local() {
 
 // 单个实例的渲染,运行时使用go func
 func (self *RenderManager) render_inst(inst *RenderInstance) {
-
 	for {
-		count_true := 0
-
-		for k, _ := range self.pointer_dict {
-			if k == nil {
-				self.pointer_dict[k] = false
-			} else {
-				self.pointer_dict[k] = true
-				count_true += 1
-			}
-		}
-
-		log.Println("true:", count_true, "false:", len(self.pointer_dict)-count_true)
-
 		select {
 		case <-inst.notify_tile:
 			inst.update_page_buffer(inst.pending_tile)
@@ -326,22 +309,6 @@ func (self *RenderManager) render_inst(inst *RenderInstance) {
 				doc, _ := fitz.NewFromReader(&tile_buf)
 				img, _ := doc.ImageDPI(0, task.Dpi)
 
-				// --- 调试追踪代码 ---
-				// 记录当前图像的指针地址和大致内存大小
-				imgPtr := img
-				bounds := img.Bounds()
-				sizeMB := float64(bounds.Dx()*bounds.Dy()*4) / (1024 * 1024)
-
-				log.Printf("[创建] 图像指针: %p, 尺寸: %dx%d (约 %.2f MB)", imgPtr, bounds.Dx(), bounds.Dy(), sizeMB)
-
-				// 绑定 Finalizer：当 img 被 GC 回收时触发
-				runtime.SetFinalizer(imgPtr, func(p *image.RGBA) {
-					log.Printf("[回收成功 🎉] 图像指针: %p 已经被 GC 彻底回收了", p)
-				})
-				// ------------------
-
-				self.pointer_dict[img] = true
-
 				doc.Close()
 
 				if task.Call_fn != nil {
@@ -367,22 +334,6 @@ func (self *RenderManager) render_inst(inst *RenderInstance) {
 				}
 
 				img, _ := inst.doc.ImageDPI(task.Page, float64(task.DPI))
-
-				// --- 调试追踪代码 ---
-				// 记录当前图像的指针地址和大致内存大小
-				imgPtr := img
-				bounds := img.Bounds()
-				sizeMB := float64(bounds.Dx()*bounds.Dy()*4) / (1024 * 1024)
-
-				log.Printf("[创建] 图像指针: %p, 尺寸: %dx%d (约 %.2f MB)", imgPtr, bounds.Dx(), bounds.Dy(), sizeMB)
-
-				// 绑定 Finalizer：当 img 被 GC 回收时触发
-				runtime.SetFinalizer(imgPtr, func(p *image.RGBA) {
-					log.Printf("[回收成功 🎉] 图像指针: %p 已经被 GC 彻底回收了", p)
-				})
-				// ------------------
-
-				self.pointer_dict[img] = true
 
 				if task.Call_fn != nil {
 					task.Call_fn(img)
@@ -421,6 +372,7 @@ func (self *RenderManager) Delete_document(id string) {
 	}
 	self.mu.Unlock()
 	runtime.GC()
+	log.Println("delete success")
 }
 
 // 获取文件信息

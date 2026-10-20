@@ -36,4 +36,7 @@ static inline void custom_drop_drawn_tiles(void *ctx_ptr, void *doc_ptr) {
   fz_catch(ctx) {}
 }
 
+// 渲染瓦片
+// static inline
+
 #endif

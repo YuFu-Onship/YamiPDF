@@ -12,6 +12,7 @@ import (
 // #include "custom_fitz.h"
 import "C"
 
+// go-fitz内部的类在这里的对照
 // 严格按照 Document 结构体顺序和类型对齐内存, 越权强读fitz内部的指针
 type fitzDocInternal struct {
 	ctx    unsafe.Pointer // *C.struct_fz_context
@@ -66,5 +67,16 @@ func Drop_down_pages(doc *fitz.Document) error {
 	}
 	// C.custom_drop_drawn_tiles(ctx_ptr, doc_ptr)
 	// C.custom_drop_drawn_pages()
+	return nil
+}
+
+func RenderTile(doc *fitz.Document, page_num int) error {
+	if doc == nil {
+		return fmt.Errorf("doc is nil")
+	}
+
+	// internal := (*fitzDocInternal)(unsafe.Pointer(doc))
+	// ctx_ptr, doc_ptr := internal.ctx, internal.doc
+
 	return nil
 }
