@@ -2,6 +2,7 @@ package trunk
 
 import (
 	rumia "app/src"
+	"app/src/render"
 	"image"
 )
 
@@ -46,4 +47,27 @@ func (self Trunk) Add_render_page_list(id string, tasks []*rumia.RenderFullTask)
 // func (self Trunk) Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA)) {
 func (self Trunk) Add_render_tile_list(id string, tasks []*rumia.RenderTileTask) {
 	self.RenderManager.Add_render_tile_list(id, tasks)
+}
+
+// 新的渲染管理器 ----------------------------------------------------------------------
+
+// 增加新的渲染实例
+//   - id 就是路径
+func (self Trunk) Add_render_inst(id string, file_type rumia.FileType) {
+	self.RenderInstManager.API_add_inst(id, file_type)
+}
+
+// 渲染整页
+func (self Trunk) Render_full_page(id string, page int, dpi float64) *image.RGBA {
+	return self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).Render_full(page, dpi)
+}
+
+// 得到元信息
+func (self Trunk) API_get_pdf_info(id string) map[string]string {
+	return self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).API_get_info()
+}
+
+// 得到页尺寸
+func (self Trunk) API_get_pdf_page_size(id string, page int) image.Rectangle {
+	return self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).API_get_page_size(page)
 }

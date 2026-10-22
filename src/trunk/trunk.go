@@ -9,9 +9,11 @@ import (
 )
 
 type Trunk struct {
-	RootPath      string
-	Page          *page.Page
-	RenderManager *render.RenderManager
+	RootPath          string
+	Page              *page.Page
+	RenderManager     *render.RenderManager
+	RenderInstManager *render.RenderInstManager
+
 	// ShaderRender render.ShaderRender
 }
 
@@ -20,7 +22,8 @@ func NewTrunk(path string) *Trunk {
 		RootPath: path,
 	}
 
-	self.RenderManager = render.NewRenderManager()
+	// self.RenderManager = render.NewRenderManager()
+	self.RenderInstManager = render.NewRenderInstManager()
 
 	self.Page = page.NewPage()
 	self.Page.API_set_trunk(self)
@@ -41,6 +44,8 @@ func (self *Trunk) Run() {
 		}
 	}()
 
-	self.RenderManager.Run()
+	// self.RenderManager.Run()
+	self.RenderInstManager.Run()
+
 	self.Page.Run()
 }

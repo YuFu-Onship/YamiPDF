@@ -142,6 +142,7 @@ func (self *PageInfo) Destory() {
 type PDFViewer struct {
 	motion *Motion // 动作检测
 	Style  *Style  // 样式主题
+	id     string
 
 	buffer_page     map[int]*PageInfo        // 页缓冲区
 	buffer_size     map[int]*image.Rectangle // 尺寸缓冲区
@@ -182,8 +183,8 @@ type PDFViewer struct {
 	page_radius int     // 固定的元素圆角半径
 	base_height float64 // 固定的元素高
 
-	bridge_trunk BridgeTrunk // 外部接口
-	bridge_ui    BridgeUI    // 内部ui接口
+	// bridge_trunk BridgeTrunk // 外部接口
+	bridge_trunk rumia.BridgeTrunk // 外部接口
 
 	dpi float64 // 全局dpi
 
@@ -199,11 +200,13 @@ type PDFViewer struct {
 }
 
 // 新的pdf渲染窗口
-func NewPDFView(doc_id string, style *Style, bridge_trunk BridgeTrunk, bridge_ui BridgeUI) *PDFViewer {
+func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bridge_ui BridgeUI) *PDFViewer {
 	self := PDFViewer{
 		Style:  style,
 		motion: NewMotion(),
-		pad:    8,
+		id:     "",
+
+		pad: 8,
 
 		buffer_page:     map[int]*PageInfo{},
 		buffer_size:     make(map[int]*image.Rectangle),
@@ -230,7 +233,6 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk BridgeTrunk, bridge_ui
 		doc_scale: 1,
 
 		bridge_trunk: bridge_trunk,
-		bridge_ui:    bridge_ui,
 
 		mode_render: mode_render_page,
 		debouncer:   *tool.NewDebouncer(time.Millisecond * 100),
@@ -256,6 +258,7 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk BridgeTrunk, bridge_ui
 
 	for i := range self.doc_info["page_num"].(int) {
 		size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
+		// size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
 		self.buffer_size[i] = &size
 	}
 
@@ -692,9 +695,9 @@ func (self *PDFViewer) update_buffer() {
 		}
 
 		if self.mode_render == mode_render_tile {
-			self.add_tile(pages)
+			// self.add_tile(pages)
 		} else if self.mode_render == mode_render_page {
-			self.is_update_pages(pages)
+			self.update_pages(pages)
 		}
 	}
 }
@@ -716,7 +719,7 @@ func (self *PDFViewer) get_focus_page() int {
 }
 
 // 增加新的页面
-func (self *PDFViewer) is_update_pages(pages []int) {
+func (self *PDFViewer) update_pages(pages []int) {
 	// 当前视口的页
 
 	// 清除页缓冲区中的无用页
@@ -730,7 +733,7 @@ func (self *PDFViewer) is_update_pages(pages []int) {
 		if !keep_pages[k] {
 			if v != nil {
 				v.Destory()
-				self.bridge_ui.RefreshWindow()
+				self.bridge_trunk.Refresh_window()
 			}
 			delete(self.buffer_page, k)
 		}
@@ -762,9 +765,12 @@ func (self *PDFViewer) is_update_pages(pages []int) {
 				Call_fn: func(img *image.RGBA) { self.callback_apply_full(p, self.dpi, self.mode_shader, img) },
 			})
 		}
+		img := self.bridge_trunk.Render_full_page(self.id, p, self.dpi)
+		self.callback_apply_full(p, self.dpi, mode_shader_oriangle, img)
 	}
 
-	self.bridge_trunk.Add_render_page_list(self.doc_id, full_tasks)
+	// self.bridge_trunk.Add_render_page_list(self.doc_id, full_tasks)
+
 }
 
 // update tiles
@@ -1036,7 +1042,7 @@ func (self *PDFViewer) callback_apply_full(page int, dpi float64, mode_shader mo
 				}
 				info.Widget.Src.Filter = paint.FilterNearest
 			}
-			self.bridge_ui.RefreshWindow()
+			self.bridge_trunk.Refresh_window()
 		} else {
 			log.Println("page info not exist")
 		}
@@ -1067,7 +1073,7 @@ func (self *PDFViewer) callback_apply_tile(page int, dpi float64, rect *types.Re
 				}
 			}
 
-			self.bridge_ui.RefreshWindow()
+			self.bridge_trunk.Refresh_window()
 		} else {
 			log.Println("not exist")
 		}
@@ -1323,4 +1329,10 @@ func (self *PDFViewer) to_arc_state(arc float64) int {
 	}
 	step := int(math.Round(rad/(math.Pi*0.5))) % 4
 	return step
+}
+
+// 设置ID
+func (self *PDFViewer) API_set_id(id string) *PDFViewer {
+	self.id = id
+	return self
 }

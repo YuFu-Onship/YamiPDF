@@ -1,6 +1,7 @@
 package page
 
 import (
+	rumia "app/src"
 	"app/src/ui"
 	"image"
 
@@ -26,7 +27,7 @@ type PageRouter struct {
 	managers map[string]*PageManager
 
 	Tools       ui.BridgeUI
-	BridgeTrunk ui.BridgeTrunk
+	BridgeTrunk rumia.BridgeTrunk
 }
 
 func NewPageRouter(style *ui.Style) *PageRouter {

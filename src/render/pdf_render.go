@@ -366,13 +366,12 @@ func (self *RenderManager) Delete_document(id string) {
 	self.mu.Lock()
 	if inst, exist := self.insts[id]; exist && inst.doc != nil {
 		inst.doc.Close()
-		log.Println(len(inst.page_buffer))
 		inst.page_buffer = nil
 		delete(self.insts, id)
 	}
 	self.mu.Unlock()
 	runtime.GC()
-	log.Println("delete success")
+	log.Println("inst length", len(self.insts))
 }
 
 // 获取文件信息

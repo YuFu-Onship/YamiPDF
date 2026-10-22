@@ -2,6 +2,7 @@ package page
 
 import (
 	"app/assets"
+	rumia "app/src"
 	"app/src/ui"
 	"image"
 	"log"
@@ -25,7 +26,7 @@ type W = layout.Widget
 type Page struct {
 	Deco         *ui.CustomDeco
 	Style        *ui.Style
-	bridge_trunk ui.BridgeTrunk
+	bridge_trunk rumia.BridgeTrunk
 
 	win_size      image.Point
 	is_win_change bool
@@ -216,7 +217,7 @@ func (self Page) IsWinSizeChange() bool {
 }
 
 // 设置trunk根接口
-func (self *Page) API_set_trunk(trunk ui.BridgeTrunk) *Page {
+func (self *Page) API_set_trunk(trunk rumia.BridgeTrunk) *Page {
 	self.bridge_trunk = trunk
 	return self
 }
