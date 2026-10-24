@@ -55,12 +55,12 @@ type RenderInstance struct {
 	doc       *fitz.Document //渲染实例
 	inst_mu   sync.Mutex     //防止同时操作实例或任务列表
 
-	done         chan struct{}           //渲染完成通知,关闭实例
-	pending_full []*rumia.RenderFullTask //整页任务列表
-	pending_tile []*rumia.RenderTileTask //瓦片任务列表
-	tasks        chan *renderFullTask    //渲染任务通道
-	notify_full  chan struct{}           //通知,用于更新渲染列表
-	notify_tile  chan struct{}           //通知,用于更新渲染列表
+	done         chan struct{}                //渲染完成通知,关闭实例
+	pending_full []*rumia.RenderTask_PDF_Full //整页任务列表
+	pending_tile []*rumia.RenderTileTask      //瓦片任务列表
+	tasks        chan *renderFullTask         //渲染任务通道
+	notify_full  chan struct{}                //通知,用于更新渲染列表
+	notify_tile  chan struct{}                //通知,用于更新渲染列表
 
 	mode        RenderMode      //渲染模式
 	page_buffer map[int]*[]byte //pdf页缓冲区
@@ -424,7 +424,7 @@ func (self *RenderManager) Add_render_page(id string, page int, call_fn func(img
 }
 
 // 增加需要渲染的页列表(回调)
-func (self *RenderManager) Add_render_page_list(id string, tasks []*rumia.RenderFullTask) {
+func (self *RenderManager) Add_render_page_list(id string, tasks []*rumia.RenderTask_PDF_Full) {
 
 	self.mu.Lock()
 	inst, exist := self.insts[id]

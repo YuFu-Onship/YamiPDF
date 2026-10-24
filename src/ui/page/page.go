@@ -39,7 +39,7 @@ type Page struct {
 
 func NewPage() *Page {
 	theme := material.NewTheme()
-	style := ui.NewStyle(theme, ui.Palette_teto)
+	style := ui.NewStyle(theme, ui.Palette_windows)
 	style.SetColorMode(true)
 
 	self := Page{

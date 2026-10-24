@@ -35,7 +35,7 @@ type BridgeTrunk interface {
 
 	// 添加新的渲染页列表
 	// Add_render_page_list(id string, dpi float64, pages []int, call_fn func(page int, dpi float64, img *image.RGBA))
-	Add_render_page_list(id string, tasks []*RenderFullTask)
+	Add_render_page_list(id string, tasks []*RenderTask_PDF_Full)
 
 	// 添加新的渲染瓦块
 	// Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA))
@@ -47,10 +47,13 @@ type BridgeTrunk interface {
 	Add_render_inst(id string, file_type FileType)
 
 	// 渲染整页
-	Render_full_page(id string, page int, dpi float64) *image.RGBA
+	Render_pdf_full_page(id string, task RenderTask_PDF_Full)
+
+	// 渲染整页列表
+	Rebder_pdf_full_pages(id string, tasks []*RenderTask_PDF_Full)
 
 	// 得到pdf元信息
-	API_get_pdf_info(id string) map[string]string
+	API_get_pdf_info(id string) map[string]any
 
 	// 得到pdf指定页的尺寸
 	API_get_pdf_page_size(id string, page int) image.Rectangle

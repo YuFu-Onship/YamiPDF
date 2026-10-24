@@ -27,7 +27,7 @@ var FileType_table map[FileType]string = map[FileType]string{
 // ----------------------------------------------------------------------
 
 // 整页渲染任务
-type RenderFullTask struct {
+type RenderTask_PDF_Full struct {
 	Page    int
 	DPI     float64
 	Call_fn func(img *image.RGBA)

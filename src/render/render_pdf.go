@@ -1,6 +1,7 @@
 package render
 
 import (
+	rumia "app/src"
 	"image"
 	"log"
 
@@ -13,9 +14,10 @@ type NavigatorPDF interface {
 
 // pdf渲染实例
 type RenderInstPDF struct {
-	Path string
-	Id   string
-	doc  *fitz.Document
+	Path    string
+	Id      string
+	doc     *fitz.Document
+	Manager RenderInstManagerAPI
 }
 
 func NewRenderInstPDF() *RenderInstPDF {
@@ -30,12 +32,23 @@ func (self *RenderInstPDF) Get_total_count() int { return 0 }
 func (self *RenderInstPDF) ID() string           { return "" }
 func (self *RenderInstPDF) Type() RenderInstType { return RenderInstType_PDF }
 
-func (self *RenderInstPDF) Render_full(page int, dpi float64) *image.RGBA {
-	img, err := self.doc.ImageDPI(page, dpi)
-	if err != nil {
-		log.Fatal(err)
+func (self *RenderInstPDF) Render_full(task rumia.RenderTask_PDF_Full) {
+	if self.Manager == nil {
+		return
 	}
-	return img
+
+	// 将渲染传入渲染通道
+	self.Manager.API_add_task(func() {
+		img, err := self.doc.ImageDPI(task.Page, task.DPI)
+		if err != nil {
+			log.Fatal(err)
+		}
+		task.Call_fn(img)
+	})
+}
+
+func (self *RenderInstPDF) Render_full_pages(tasks []*rumia.RenderTask_PDF_Full) {
+
 }
 
 func (self *RenderInstPDF) API_add_path(path string) *RenderInstPDF {
@@ -57,4 +70,12 @@ func (self *RenderInstPDF) API_get_page_size(page int) image.Rectangle {
 
 func (self *RenderInstPDF) API_get_info() map[string]string {
 	return self.doc.Metadata()
+}
+
+func (self *RenderInstPDF) API_get_num() int {
+	return self.doc.NumPage()
+}
+
+func (self *RenderInstPDF) API_set_manager_api(manager_api RenderInstManagerAPI) {
+	self.Manager = manager_api
 }

@@ -3,6 +3,7 @@ package page
 import (
 	"app/assets"
 	"app/src/ui"
+	"image/color"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
@@ -25,8 +26,9 @@ type PageSettingCustom struct {
 
 	// 配置项
 	dark_mode_switch widget.Bool
-	language_enum    widget.Enum
-	palette_enum     widget.Enum
+
+	language_radio *ui.CustomRadio
+	palette_radio  *ui.CustomPaletteRadio
 }
 
 func NewPageSettingCustom(style *ui.Style, page_router *PageRouter) *PageSettingCustom {
@@ -35,6 +37,7 @@ func NewPageSettingCustom(style *ui.Style, page_router *PageRouter) *PageSetting
 		page_router: page_router,
 		space:       ui.NewAniEaseList(style, ui.AniEaseList{Num: 3, Space: 100, Tigger_percent: 0.3, Coe: 0.3}),
 	}
+
 	self.init_language()
 	self.init_palette()
 
@@ -50,6 +53,9 @@ func (self *PageSettingCustom) Layout(gtx C) D {
 
 	children := make([]layout.FlexChild, 0, len(widgets)*2)
 	for i, widget := range widgets {
+		if i != 0 {
+			children = append(children, layout.Rigid(layout.Spacer{Height: unit.Dp(8)}.Layout))
+		}
 		children = append(children, widget)
 		children = append(children, layout.Rigid(layout.Spacer{Height: unit.Dp(self.space.API_get_value(i))}.Layout))
 	}
@@ -82,98 +88,81 @@ func (self *PageSettingCustom) layout_darkmode(gtx C) D {
 
 // 配色
 func (self *PageSettingCustom) init_palette() {
-	self.palette_enum = widget.Enum{}
-
-	switch self.Style.PaletteID {
-	case ui.Palette_windows:
-		self.palette_enum.Value = "windows"
-	case ui.Palette_teto:
-		self.palette_enum.Value = "teto"
-	case ui.Palette_koishi:
-		self.palette_enum.Value = "koishi"
-
-	}
+	self.palette_radio = ui.NewCustomPaletteRadio(self.Style).
+		API_add_choice("windows", func() color.NRGBA { return self.Style.API_get_theme_color(ui.Palette_windows) }).
+		API_add_choice("teto", func() color.NRGBA { return self.Style.API_get_theme_color(ui.Palette_teto) }).
+		API_add_choice("koishi", func() color.NRGBA { return self.Style.API_get_theme_color(ui.Palette_koishi) }).
+		API_set_callback(func(key string) {
+			switch key {
+			case "windows":
+				self.Style.API_set_palette(ui.Palette_windows)
+			case "teto":
+				self.Style.API_set_palette(ui.Palette_teto)
+			case "koishi":
+				self.Style.API_set_palette(ui.Palette_koishi)
+			}
+		}).
+		API_set_value(func() string {
+			switch self.Style.PaletteID {
+			case ui.Palette_windows:
+				return "windows"
+			case ui.Palette_teto:
+				return "teto"
+			case ui.Palette_koishi:
+				return "koishi"
+			}
+			return "windows"
+		}())
 }
 func (self *PageSettingCustom) layout_palette(gtx C) D {
-
-	windows := material.RadioButton(self.Style.Theme, &self.palette_enum, "windows", "")
-	windows.IconColor = self.Style.API_get_theme_color(ui.Palette_windows)
-
-	teto := material.RadioButton(self.Style.Theme, &self.palette_enum, "teto", "")
-	teto.IconColor = self.Style.API_get_theme_color(ui.Palette_teto)
-
-	koishi := material.RadioButton(self.Style.Theme, &self.palette_enum, "koishi", "")
-	koishi.IconColor = self.Style.API_get_theme_color(ui.Palette_koishi)
-
-	self.palette_enum.Hovered()
-
 	dims := layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
 		layout.Rigid(material.H6(self.Style.Theme, assets.Icon_palette).Layout),
 		layout.Rigid(layout.Spacer{Width: unit.Dp(12)}.Layout),
 		layout.Rigid(material.H6(self.Style.Theme, ui.GetWord("palette", self.Style.Lang)).Layout),
 		layout.Flexed(1, layout.Spacer{}.Layout),
-		layout.Rigid(windows.Layout),
-		layout.Rigid(teto.Layout),
-		layout.Rigid(koishi.Layout),
+		layout.Rigid(self.palette_radio.Layout),
 	)
-
-	switch self.palette_enum.Value {
-	case "windows":
-		self.Style.API_set_palette(ui.Palette_windows)
-	case "teto":
-		self.Style.API_set_palette(ui.Palette_teto)
-	case "koishi":
-		self.Style.API_set_palette(ui.Palette_koishi)
-	}
 
 	return dims
 }
 
 // 语言
 func (self *PageSettingCustom) init_language() {
-	self.language_enum = widget.Enum{}
-	switch self.Style.Lang {
-	case ui.CN:
-		self.language_enum.Value = "cn"
-	case ui.EN:
-		self.language_enum.Value = "en"
-	case ui.JP:
-		self.language_enum.Value = "jp"
-
-	}
+	self.language_radio = ui.NewCustomRadio(self.Style).
+		API_set_text("cn", func() string { return "中文" }).
+		API_set_text("en", func() string { return "English" }).
+		API_set_text("jp", func() string { return "日本語" }).
+		API_set_callback(func(key string) {
+			switch key {
+			case "cn":
+				self.Style.Lang = ui.CN
+			case "en":
+				self.Style.Lang = ui.EN
+			case "jp":
+				self.Style.Lang = ui.JP
+			}
+		}).
+		API_set_value(func() string {
+			switch self.Style.Lang {
+			case ui.CN:
+				return "cn"
+			case ui.EN:
+				return "en"
+			case ui.JP:
+				return "jp"
+			}
+			return "cn"
+		}())
 }
+
 func (self *PageSettingCustom) layout_language(gtx C) D {
-	cn := material.RadioButton(self.Style.Theme, &self.language_enum, "cn", ui.GetWord("中文", 0))
-	cn.Color = self.Style.Palette.Fg_1
-	cn.IconColor = self.Style.Palette.Fg_1
-
-	en := material.RadioButton(self.Style.Theme, &self.language_enum, "en", ui.GetWord("English", 0))
-	en.Color = self.Style.Palette.Fg_1
-	en.IconColor = self.Style.Palette.Fg_1
-
-	jp := material.RadioButton(self.Style.Theme, &self.language_enum, "jp", ui.GetWord("日本語", 0))
-	jp.Color = self.Style.Palette.Fg_1
-	jp.IconColor = self.Style.Palette.Fg_1
-
-	self.language_enum.Hovered()
 	dims := layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
 		layout.Rigid(material.H6(self.Style.Theme, assets.Icon_language).Layout),
 		layout.Rigid(layout.Spacer{Width: unit.Dp(12)}.Layout),
 		layout.Rigid(material.H6(self.Style.Theme, ui.GetWord("language", self.Style.Lang)).Layout),
 		layout.Flexed(1, layout.Spacer{}.Layout),
-		layout.Rigid(cn.Layout),
-		layout.Rigid(en.Layout),
-		layout.Rigid(jp.Layout),
+		layout.Rigid(self.language_radio.Layout),
 	)
-
-	switch self.language_enum.Value {
-	case "cn":
-		self.Style.Lang = ui.CN
-	case "en":
-		self.Style.Lang = ui.EN
-	case "jp":
-		self.Style.Lang = ui.JP
-	}
 
 	return dims
 }

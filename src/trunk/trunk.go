@@ -45,7 +45,7 @@ func (self *Trunk) Run() {
 	}()
 
 	// self.RenderManager.Run()
-	self.RenderInstManager.Run()
+	go self.RenderInstManager.Run()
 
 	self.Page.Run()
 }

@@ -249,7 +249,7 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 		clickable_release: widget.Clickable{},
 	}
 
-	self.doc_info = self.bridge_trunk.Get_info(doc_id)
+	self.doc_info = self.bridge_trunk.API_get_pdf_info(doc_id)
 	self.doc_page_num = self.doc_info["page_num"].(int)
 
 	self.mode_shader = mode_shader_oriangle
@@ -257,7 +257,7 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 	self.mode_order = mode_order_right
 
 	for i := range self.doc_info["page_num"].(int) {
-		size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
+		size := self.bridge_trunk.API_get_pdf_page_size(self.doc_id, i)
 		// size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
 		self.buffer_size[i] = &size
 	}
@@ -753,20 +753,22 @@ func (self *PDFViewer) update_pages(pages []int) {
 	// }
 
 	// 渲染页缓冲区中的图像
-	full_tasks := []*rumia.RenderFullTask{}
+	full_tasks := []*rumia.RenderTask_PDF_Full{}
 	for _, p := range pages {
 		if self.buffer_page[p].Widget == nil ||
 			self.buffer_page[p].DPI != self.dpi ||
 			self.buffer_page[p].mode_shader != self.mode_shader {
 
-			full_tasks = append(full_tasks, &rumia.RenderFullTask{
+			task := rumia.RenderTask_PDF_Full{
 				Page:    p,
 				DPI:     self.dpi,
 				Call_fn: func(img *image.RGBA) { self.callback_apply_full(p, self.dpi, self.mode_shader, img) },
-			})
+			}
+
+			full_tasks = append(full_tasks, &task)
+			self.bridge_trunk.Render_pdf_full_page(self.doc_id, task)
 		}
-		img := self.bridge_trunk.Render_full_page(self.id, p, self.dpi)
-		self.callback_apply_full(p, self.dpi, mode_shader_oriangle, img)
+		// self.callback_apply_full(p, self.dpi, mode_shader_oriangle, img)
 	}
 
 	// self.bridge_trunk.Add_render_page_list(self.doc_id, full_tasks)

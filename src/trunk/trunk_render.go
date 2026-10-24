@@ -40,7 +40,7 @@ func (self Trunk) Add_render_page(id string, page int, call_fn func(img *image.R
 }
 
 // func (self Trunk) Add_render_page_list(id string, dpi float64, pages []int, call_fn func(page int, dpi float64, img *image.RGBA)) {
-func (self Trunk) Add_render_page_list(id string, tasks []*rumia.RenderFullTask) {
+func (self Trunk) Add_render_page_list(id string, tasks []*rumia.RenderTask_PDF_Full) {
 	self.RenderManager.Add_render_page_list(id, tasks)
 }
 
@@ -58,16 +58,24 @@ func (self Trunk) Add_render_inst(id string, file_type rumia.FileType) {
 }
 
 // 渲染整页
-func (self Trunk) Render_full_page(id string, page int, dpi float64) *image.RGBA {
-	return self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).Render_full(page, dpi)
+func (self Trunk) Render_pdf_full_page(id string, task rumia.RenderTask_PDF_Full) {
+	self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).Render_full(task)
 }
 
 // 得到元信息
-func (self Trunk) API_get_pdf_info(id string) map[string]string {
-	return self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).API_get_info()
+func (self Trunk) API_get_pdf_info(id string) map[string]any {
+	return map[string]any{
+		"page_num":  self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).API_get_num(),
+		"meta_data": self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).API_get_info(),
+	}
 }
 
 // 得到页尺寸
 func (self Trunk) API_get_pdf_page_size(id string, page int) image.Rectangle {
 	return self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).API_get_page_size(page)
+}
+
+// 渲染整页的列表
+func (self Trunk) Rebder_pdf_full_pages(id string, tasks []*rumia.RenderTask_PDF_Full) {
+	// self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).
 }
