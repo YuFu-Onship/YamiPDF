@@ -26,6 +26,12 @@ var FileType_table map[FileType]string = map[FileType]string{
 
 // ----------------------------------------------------------------------
 
+// basetask
+type BaseTask struct {
+	Id   string
+	Task any
+}
+
 // 整页渲染任务
 type RenderTask_PDF_Full struct {
 	Page    int

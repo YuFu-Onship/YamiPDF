@@ -18,6 +18,8 @@ type RenderInstPDF struct {
 	Id      string
 	doc     *fitz.Document
 	Manager RenderInstManagerAPI
+
+	task_list []any
 }
 
 func NewRenderInstPDF() *RenderInstPDF {
@@ -25,12 +27,13 @@ func NewRenderInstPDF() *RenderInstPDF {
 	return &self
 }
 
-func (self *RenderInstPDF) New()     {}
-func (self *RenderInstPDF) Destory() {}
-
+func (self *RenderInstPDF) New()                 {}
+func (self *RenderInstPDF) Destory()             {}
 func (self *RenderInstPDF) Get_total_count() int { return 0 }
-func (self *RenderInstPDF) ID() string           { return "" }
+func (self *RenderInstPDF) ID() string           { return self.Id }
 func (self *RenderInstPDF) Type() RenderInstType { return RenderInstType_PDF }
+
+func (self *RenderInstPDF) Run() {}
 
 func (self *RenderInstPDF) Render_full(task rumia.RenderTask_PDF_Full) {
 	if self.Manager == nil {
@@ -48,6 +51,9 @@ func (self *RenderInstPDF) Render_full(task rumia.RenderTask_PDF_Full) {
 }
 
 func (self *RenderInstPDF) Render_full_pages(tasks []*rumia.RenderTask_PDF_Full) {
+	if self.Manager == nil {
+		return
+	}
 
 }
 

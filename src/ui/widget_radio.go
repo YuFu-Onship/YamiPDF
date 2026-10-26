@@ -4,6 +4,7 @@ import (
 	"app/assets"
 	"image"
 	"image/color"
+	"log"
 
 	"gioui.org/layout"
 	"gioui.org/unit"
@@ -45,6 +46,12 @@ func (self *CustomRadio) Layout(gtx C) D {
 	children := []layout.FlexChild{}
 
 	for i, key := range self.keys {
+		if self.clickables[key].Clicked(gtx) {
+			self.value = key
+			self.callback(key)
+			log.Println(gtx.Constraints.Max.Y)
+		}
+
 		if i != 0 {
 			children = append(children, layout.Rigid(layout.Spacer{Width: unit.Dp(self.spacer)}.Layout))
 		}
@@ -57,40 +64,32 @@ func (self *CustomRadio) Layout(gtx C) D {
 }
 
 func (self *CustomRadio) build_btn(gtx C, key string) D {
-	if clickable, exist := self.clickables[key]; exist {
-		if clickable.Clicked(gtx) {
-			self.value = key
-			self.callback(key)
-		}
+	is_active := self.value == key
 
-		is_active := self.value == key
+	btn := material.Button(self.Style.Theme, self.clickables[key], "")
+	btn.Background = Ternary(is_active, self.Style.Palette.Bg_3, self.Style.Palette.Bg_2)
+	btn.Inset = layout.Inset{}
 
-		btn := material.Button(self.Style.Theme, clickable, "")
-		btn.Background = Ternary(is_active, self.Style.Palette.Bg_3, self.Style.Palette.Bg_2)
-		btn.Inset = layout.Inset{}
+	label_text := material.Body1(self.Style.Theme, self.texts[key]())
+	label_text.Color = Ternary(is_active, self.Style.Palette.Fg_3, self.Style.Palette.Fg_2)
 
-		fn_text := func(gtx C) D {
-			gtx.Constraints.Min.Y = gtx.Dp(30)
-			gtx.Constraints.Max.Y = gtx.Dp(30)
+	fn_text := func(gtx C) D {
+		gtx.Constraints.Min.Y = gtx.Dp(30)
+		gtx.Constraints.Max.Y = gtx.Dp(30)
 
-			label_text := material.Body1(self.Style.Theme, self.texts[key]())
-			label_text.Color = Ternary(is_active, self.Style.Palette.Fg_3, self.Style.Palette.Fg_2)
-
-			return layout.Center.Layout(gtx, func(gtx C) D {
-				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-					layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
-					layout.Rigid(label_text.Layout),
-					layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
-				)
-			})
-		}
-
-		return layout.Stack{Alignment: layout.Center}.Layout(gtx,
-			layout.Expanded(btn.Layout),
-			layout.Stacked(fn_text),
-		)
+		return layout.Center.Layout(gtx, func(gtx C) D {
+			return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+				layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
+				layout.Rigid(label_text.Layout),
+				layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
+			)
+		})
 	}
-	return D{}
+
+	return layout.Stack{Alignment: layout.Center}.Layout(gtx,
+		layout.Expanded(btn.Layout),
+		layout.Stacked(fn_text),
+	)
 }
 
 func (self *CustomRadio) API_set_text(key string, text func() string) *CustomRadio {
@@ -143,6 +142,12 @@ func NewCustomPaletteRadio(style *Style) *CustomPaletteRadio {
 func (self *CustomPaletteRadio) Layout(gtx C) D {
 	children := []layout.FlexChild{}
 	for i, key := range self.keys {
+		if self.clickables[key].Clicked(gtx) {
+			self.value = key
+			self.callback(key)
+			log.Println(gtx.Constraints.Max.Y)
+		}
+
 		if i != 0 {
 			children = append(children, layout.Rigid(layout.Spacer{Width: unit.Dp(self.spacer)}.Layout))
 		}
@@ -155,22 +160,19 @@ func (self *CustomPaletteRadio) Layout(gtx C) D {
 func (self *CustomPaletteRadio) build_btn(gtx C, key string) D {
 	is_active := key == self.value
 
-	gtx.Constraints.Max = image.Pt(gtx.Dp(30), gtx.Dp(30))
-	gtx.Constraints.Min = image.Pt(gtx.Dp(30), gtx.Dp(30))
-
-	if self.clickables[key].Clicked(gtx) {
-		self.value = key
-		self.callback(key)
-	}
-
 	btn := material.Button(self.Style.Theme, self.clickables[key], assets.Icon_check)
 	btn.Color = self.Style.Palette.Fg_3
 	btn.Color.A = Ternary(is_active, btn.Color.A, 0)
 	btn.Background = self.colors[key]()
 	btn.Inset = layout.Inset{}
 	btn.TextSize = unit.Sp(20)
+	fn_btn := func(gtx C) D {
+		gtx.Constraints.Min = image.Pt(gtx.Dp(30), gtx.Dp(30))
+		gtx.Constraints.Max = image.Pt(gtx.Dp(30), gtx.Dp(30))
+		return btn.Layout(gtx)
+	}
 
-	return btn.Layout(gtx)
+	return fn_btn(gtx)
 }
 
 func (self *CustomPaletteRadio) API_add_choice(key string, c func() color.NRGBA) *CustomPaletteRadio {

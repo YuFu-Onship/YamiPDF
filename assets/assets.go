@@ -31,4 +31,9 @@ var (
 	Icon_vertical_line = "\uED70"
 	Icon_experimental  = "\uE79E"
 	Icon_loading       = "\uE66C"
+	Icon_check_square  = "\uE186"
+	Icon_square        = "\uE45E" // 可用作 max
+	Icon_min           = "\uE32A"
+	Icon_cards         = "\uE0F8" // 可用作 un_max
+	Icon_x             = "\uE4F6" // 可用作 close
 )
