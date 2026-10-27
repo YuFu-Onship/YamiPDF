@@ -39,7 +39,7 @@ type BridgeTrunk interface {
 
 	// 添加新的渲染瓦块
 	// Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA))
-	Add_render_tile_list(id string, tasks []*RenderTileTask)
+	Add_render_tile_list(id string, tasks []*RenderTask_PDF_Tile)
 
 	// 新的渲染实例管理器 ---------------------------------------------------------
 
@@ -57,6 +57,15 @@ type BridgeTrunk interface {
 
 	// 得到pdf指定页的尺寸
 	API_get_pdf_page_size(id string, page int) image.Rectangle
+
+	// 覆盖渲染任务列表
+	API_set_tasks(tasks []BaseTask)
+
+	// 追加渲染任务
+	API_add_task(task BaseTask)
+
+	// 关闭渲染实例
+	API_close_inst(id string)
 
 	// ui相关 ---------------------------------------------------------------------
 

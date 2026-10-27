@@ -40,7 +40,7 @@ type RenderTask_PDF_Full struct {
 }
 
 // 瓦片渲染任务
-type RenderTileTask struct {
+type RenderTask_PDF_Tile struct {
 	Page       int
 	Dpi        float64
 	Rect       *types.Rectangle //pdf页面的坐标系,原点在左下角

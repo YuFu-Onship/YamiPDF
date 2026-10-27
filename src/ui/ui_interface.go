@@ -60,5 +60,5 @@ type BridgeTrunk interface {
 
 	// 添加新的渲染瓦块
 	// Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA))
-	Add_render_tile_list(id string, tasks []*rumia.RenderTileTask)
+	Add_render_tile_list(id string, tasks []*rumia.RenderTask_PDF_Tile)
 }

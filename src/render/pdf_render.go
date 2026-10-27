@@ -57,7 +57,7 @@ type RenderInstance struct {
 
 	done         chan struct{}                //渲染完成通知,关闭实例
 	pending_full []*rumia.RenderTask_PDF_Full //整页任务列表
-	pending_tile []*rumia.RenderTileTask      //瓦片任务列表
+	pending_tile []*rumia.RenderTask_PDF_Tile //瓦片任务列表
 	tasks        chan *renderFullTask         //渲染任务通道
 	notify_full  chan struct{}                //通知,用于更新渲染列表
 	notify_tile  chan struct{}                //通知,用于更新渲染列表
@@ -184,7 +184,7 @@ func (self *renderFullTask) Full_render() {
 }
 
 // 页缓冲区
-func (self *RenderInstance) update_page_buffer(tasks []*rumia.RenderTileTask) {
+func (self *RenderInstance) update_page_buffer(tasks []*rumia.RenderTask_PDF_Tile) {
 	keep_pages := map[int]bool{}
 	for _, t := range tasks {
 		count := t.Page
@@ -452,7 +452,7 @@ func (self *RenderManager) Add_render_page_list(id string, tasks []*rumia.Render
 }
 
 // 需要渲染的瓦片区域
-func (self *RenderManager) Add_render_tile_list(id string, tasks []*rumia.RenderTileTask) {
+func (self *RenderManager) Add_render_tile_list(id string, tasks []*rumia.RenderTask_PDF_Tile) {
 	self.mu.Lock()
 	inst, exist := self.insts[id]
 	self.mu.Unlock()

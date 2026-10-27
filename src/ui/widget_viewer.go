@@ -753,26 +753,28 @@ func (self *PDFViewer) update_pages(pages []int) {
 	// }
 
 	// 渲染页缓冲区中的图像
-	full_tasks := []*rumia.RenderTask_PDF_Full{}
+	// full_tasks := []*rumia.RenderTask_PDF_Full{}
+
+	tasks := []rumia.BaseTask{}
+
 	for _, p := range pages {
 		if self.buffer_page[p].Widget == nil ||
 			self.buffer_page[p].DPI != self.dpi ||
 			self.buffer_page[p].mode_shader != self.mode_shader {
 
-			task := rumia.RenderTask_PDF_Full{
+			task := &rumia.RenderTask_PDF_Full{
 				Page:    p,
 				DPI:     self.dpi,
 				Call_fn: func(img *image.RGBA) { self.callback_apply_full(p, self.dpi, self.mode_shader, img) },
 			}
 
-			full_tasks = append(full_tasks, &task)
-			self.bridge_trunk.Render_pdf_full_page(self.doc_id, task)
+			tasks = append(tasks, rumia.BaseTask{
+				Id:   self.doc_id,
+				Task: task,
+			})
 		}
-		// self.callback_apply_full(p, self.dpi, mode_shader_oriangle, img)
 	}
-
-	// self.bridge_trunk.Add_render_page_list(self.doc_id, full_tasks)
-
+	self.bridge_trunk.API_set_tasks(tasks)
 }
 
 // update tiles
@@ -782,17 +784,24 @@ func (self *PDFViewer) update_tile(pages []int) {
 
 // 增加瓦片
 func (self *PDFViewer) add_tile(pages []int) {
-	tasks := self.get_tile_rect(pages)
+	tile_tasks := self.get_tile_rect(pages)
+
+	tasks := []rumia.BaseTask{}
+	for _, task := range tile_tasks {
+		tasks = append(tasks, rumia.BaseTask{Id: self.doc_id, Task: task})
+	}
+
 	for _, p := range self.buffer_page {
 		if p.zoom_dpi != self.dpi || p.zoom_widget == nil {
-			self.bridge_trunk.Add_render_tile_list(self.doc_id, tasks)
+			// self.bridge_trunk.Add_render_tile_list(self.doc_id, tasks)
+			self.bridge_trunk.API_set_tasks(tasks)
 		}
 	}
 }
 
 // 得到当前视口的瓦片信息
-func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTileTask {
-	tasks := []*rumia.RenderTileTask{}
+func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
+	tasks := []*rumia.RenderTask_PDF_Tile{}
 	// for i := self.index_focus - 1; i <= self.index_focus+1; i += 1 {
 	for _, i := range pages {
 		if i >= 0 && i < self.doc_page_num {
@@ -872,7 +881,7 @@ func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTileTask {
 			rect_pdf := types.NewRectangle(px, py_pdf, px+pw, py_pdf+ph)
 			rect_page := types.NewRectangle(px, py, px+pw, py+ph)
 
-			task := rumia.RenderTileTask{
+			task := rumia.RenderTask_PDF_Tile{
 				Page:       i,
 				Dpi:        self.dpi,
 				Rect:       rect_pdf,

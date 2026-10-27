@@ -47,6 +47,8 @@ func NewPageSettingCustom(style *ui.Style, page_router *PageRouter) *PageSetting
 func (self *PageSettingCustom) Layout(gtx C) D {
 	self.space.Layout(gtx)
 
+	gtx.Constraints.Max.X = min(gtx.Constraints.Max.X, gtx.Dp(600))
+
 	widgets := []layout.FlexChild{}
 	widgets = append(widgets, layout.Rigid(func(gtx C) D { return layout.Inset{Right: unit.Dp(16)}.Layout(gtx, self.layout_language) }))
 	widgets = append(widgets, layout.Rigid(func(gtx C) D { return layout.Inset{Right: unit.Dp(16)}.Layout(gtx, self.layout_palette) }))

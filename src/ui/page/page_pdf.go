@@ -3,6 +3,7 @@ package page
 import (
 	rumia "app/src"
 	"app/src/ui"
+	"log"
 	"runtime"
 )
 
@@ -49,6 +50,7 @@ func (self *PagePDF) OnExit() {
 }
 func (self *PagePDF) Destory() {
 	// self.page_router.BridgeTrunk.Delete_document(self.id)
+	log.Println("close")
 	runtime.GC()
 }
 func (self *PagePDF) API_set_bridge_ui(bridge_ui ui.BridgeUI) {}

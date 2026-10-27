@@ -45,7 +45,7 @@ func (self Trunk) Add_render_page_list(id string, tasks []*rumia.RenderTask_PDF_
 }
 
 // func (self Trunk) Add_render_tile(id string, dpi float64, page int, rect *types.Rectangle, call_fn func(page int, dpi float64, img *image.RGBA)) {
-func (self Trunk) Add_render_tile_list(id string, tasks []*rumia.RenderTileTask) {
+func (self Trunk) Add_render_tile_list(id string, tasks []*rumia.RenderTask_PDF_Tile) {
 	self.RenderManager.Add_render_tile_list(id, tasks)
 }
 
@@ -57,9 +57,24 @@ func (self Trunk) Add_render_inst(id string, file_type rumia.FileType) {
 	self.RenderInstManager.API_add_inst(id, file_type)
 }
 
+// 添加任务(追加操作)
+func (self Trunk) API_add_task(task rumia.BaseTask) {
+	// self.RenderInstManager.
+}
+
+// 设置任务列表(覆盖操作)
+func (self Trunk) API_set_tasks(tasks []rumia.BaseTask) {
+	self.RenderInstManager.API_set_tasks(tasks)
+}
+
+// 关闭实例
+func (self Trunk) API_close_inst(id string) {
+	self.RenderInstManager.API_close_inst(id)
+}
+
 // 渲染整页
 func (self Trunk) Render_pdf_full_page(id string, task rumia.RenderTask_PDF_Full) {
-	self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).Render_full(task)
+	// self.RenderInstManager.API_get_inst(id).(*render.RenderInstPDF).Render_full(task)
 }
 
 // 得到元信息

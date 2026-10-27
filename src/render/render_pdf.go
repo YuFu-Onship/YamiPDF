@@ -2,10 +2,16 @@ package render
 
 import (
 	rumia "app/src"
+	"bytes"
+	"fmt"
 	"image"
+	"io"
 	"log"
+	"os"
 
 	"github.com/gen2brain/go-fitz"
+	"github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 )
 
 type NavigatorPDF interface {
@@ -20,10 +26,14 @@ type RenderInstPDF struct {
 	Manager RenderInstManagerAPI
 
 	task_list []any
+
+	model_conf *model.Configuration //pdfcpu 配置
 }
 
 func NewRenderInstPDF() *RenderInstPDF {
 	self := RenderInstPDF{}
+	self.model_conf = model.NewDefaultConfiguration()
+	self.model_conf.Optimize = false
 	return &self
 }
 
@@ -35,37 +45,77 @@ func (self *RenderInstPDF) Type() RenderInstType { return RenderInstType_PDF }
 
 func (self *RenderInstPDF) Run() {}
 
-func (self *RenderInstPDF) Render_full(task rumia.RenderTask_PDF_Full) {
-	if self.Manager == nil {
-		return
-	}
+// 内部调用 -------------------------------------------------------------
 
-	// 将渲染传入渲染通道
-	self.Manager.API_add_task(func() {
-		img, err := self.doc.ImageDPI(task.Page, task.DPI)
-		if err != nil {
-			log.Fatal(err)
-		}
-		task.Call_fn(img)
-	})
+func (self *RenderInstPDF) calc_page_data(page int) *[]byte {
+
+	f, err := os.Open(self.Path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	// 当前页缓冲区
+	var page_buf []byte
+	pages := []string{fmt.Sprintf("%d", page+1)}
+
+	if api.ExtractPages(f, pages, func(r io.Reader, i int) error {
+		page_buf, err = io.ReadAll(r)
+		return err
+	}, self.model_conf) != nil {
+		log.Fatal(err)
+	}
+	return &page_buf
 }
 
-func (self *RenderInstPDF) Render_full_pages(tasks []*rumia.RenderTask_PDF_Full) {
-	if self.Manager == nil {
-		return
+// 外部调用 -------------------------------------------------------------
+
+// 渲染整页
+func (self *RenderInstPDF) Render_full_page(task *rumia.RenderTask_PDF_Full) {
+	if self.doc == nil {
+		self.doc, _ = fitz.New(self.Path)
 	}
 
+	img, err := self.doc.ImageDPI(task.Page, task.DPI)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	task.Call_fn(img)
 }
 
-func (self *RenderInstPDF) API_add_path(path string) *RenderInstPDF {
+// 渲染瓦片
+func (self *RenderInstPDF) Render_tile(task *rumia.RenderTask_PDF_Tile) {
+	self.doc = nil
+	box := model.Box{Rect: task.Rect}
+	page_buf := self.calc_page_data(task.Page)
+
+	var tile_buf bytes.Buffer
+	err := api.Crop(bytes.NewReader(*page_buf), &tile_buf, []string{"1"}, &box, self.model_conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	self.doc, _ = fitz.NewFromReader(&tile_buf)
+	img, _ := self.doc.ImageDPI(0, task.Dpi)
+	self.doc.Close()
+	self.doc = nil
+	task.Call_fn(img)
+}
+
+// 设置路径
+func (self *RenderInstPDF) API_set_path(path string) *RenderInstPDF {
 	self.Path = path
 	return self
 }
+
+// 设置mupdf实例
 func (self *RenderInstPDF) API_set_doc(doc *fitz.Document) *RenderInstPDF {
 	self.doc = doc
 	return self
 }
 
+// 得到指定页尺寸
 func (self *RenderInstPDF) API_get_page_size(page int) image.Rectangle {
 	size, err := self.doc.Bound(page)
 	if err != nil {
@@ -74,14 +124,17 @@ func (self *RenderInstPDF) API_get_page_size(page int) image.Rectangle {
 	return size
 }
 
+// 得到pdf信息
 func (self *RenderInstPDF) API_get_info() map[string]string {
 	return self.doc.Metadata()
 }
 
+// 得到pdf页数
 func (self *RenderInstPDF) API_get_num() int {
 	return self.doc.NumPage()
 }
 
+// 设置上一层级的渲染实例管理器接口
 func (self *RenderInstPDF) API_set_manager_api(manager_api RenderInstManagerAPI) {
 	self.Manager = manager_api
 }
