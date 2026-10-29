@@ -44,7 +44,6 @@ func NewRender(file_type RenderInstType) (RenderAPI, error) {
 // 渲染实例管理器接口
 // 用于向子实例提供管理器的相关功能
 type RenderInstManagerAPI interface {
-	API_add_task(task func())
 }
 
 // 渲染实例管理器
@@ -119,7 +118,6 @@ func (self *RenderInstManager) API_close_inst(id string) {
 	if self.doc != nil {
 		// go-fitz无法完全释放占用的内存, 所以会导致内存占用问题
 		// 有时候多次重新打开/关闭文件能实现
-		self.doc.Close()
 		runtime.GC()
 	}
 }
@@ -167,7 +165,7 @@ func (self *RenderInstManager) API_add_inst(id string, file_type rumia.FileType)
 			API_set_path(id).
 			API_set_doc(self.doc)
 
-		// self.insts[id].API_set_manager_api(self)
+		self.insts[id].API_set_manager_api(self)
 
 	case rumia.FileType_EPUB:
 	case rumia.FileType_TXT:

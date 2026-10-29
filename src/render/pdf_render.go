@@ -391,7 +391,7 @@ func (self *RenderManager) Get_info(id string) map[string]any {
 		info["meta_data"] = inst.doc.Metadata()
 		info["page_num"] = inst.doc.NumPage()
 
-		r, err := GetCustomPageCount(inst.doc)
+		r, err := Custom_get_page_count(inst.doc)
 		if err != nil {
 			log.Println(err)
 		}

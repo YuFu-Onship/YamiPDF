@@ -22,7 +22,7 @@ type fitzDocInternal struct {
 	stream unsafe.Pointer // *C.fz_stream
 }
 
-func GetCustomPageCount(doc *fitz.Document) (int, error) {
+func Custom_get_page_count(doc *fitz.Document) (int, error) {
 	if doc == nil {
 		return 0, fmt.Errorf("document is nil")
 	}
@@ -41,6 +41,15 @@ func GetCustomPageCount(doc *fitz.Document) (int, error) {
 	}
 
 	return int(count), nil
+}
+
+func Custom_drop_path(doc *fitz.Document, pix_ptr unsafe.Pointer) {
+	internal := (*fitzDocInternal)(unsafe.Pointer(doc))
+	if internal.doc == nil || internal.ctx == nil {
+		return
+	}
+
+	C.custom_drop_pixmap(internal.ctx, pix_ptr)
 }
 
 func Drop_down_tiles(doc *fitz.Document) error {

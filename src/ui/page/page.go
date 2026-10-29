@@ -91,6 +91,7 @@ func (self *Page) draw(w *app.Window) error {
 		API_get_manager("page").
 		API_set_cur_page("main")
 
+	// 设置标题栏的返回按钮的回调函数
 	self.Deco.API_set_arrow_callback(func() {
 		self.page_router.API_get_manager("page").API_set_cur_page("main")
 	})

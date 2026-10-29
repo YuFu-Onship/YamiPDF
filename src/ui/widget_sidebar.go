@@ -335,9 +335,9 @@ func (self *SideBarWideButton) Layout(gtx C) D {
 	self.Style.AniSys.Ease64(&self.bar_height_cur, 1, &self.bar_height_cur, self.bar_height_tar, 0.4)
 
 	fg := self.Style.Palette.Fg_1
-	// fg := Ternary(self.is_active, self.Style.Palette.Fg_1, self.Style.Palette.Fg_1)
 	bg := Ternary(self.is_active, self.Style.Palette.Bg_2, self.Style.Palette.Bg_1)
-	bar_bg := self.Style.Palette.Bg_3
+	bg_bar := self.Style.Palette.Bg_3
+	// fg_icon := Ternary(self.is_active, self.Style.Palette.Bg_3, self.Style.Palette.Fg_1)
 
 	// 左侧指示条
 	fn_bar := func(gtx C) D {
@@ -346,7 +346,7 @@ func (self *SideBarWideButton) Layout(gtx C) D {
 		if !self.is_active {
 			return D{Size: gtx.Constraints.Min}
 		}
-		draw_rectangle_2(gtx, 0, -gtx.Dp(unit.Dp(self.bar_height_cur/2)), width, gtx.Dp(unit.Dp(self.bar_height_cur)), bar_bg, gtx.Dp(2))
+		draw_rectangle_2(gtx, 0, -gtx.Dp(unit.Dp(self.bar_height_cur/2)), width, gtx.Dp(unit.Dp(self.bar_height_cur)), bg_bar, gtx.Dp(2))
 		return D{Size: gtx.Constraints.Min}
 	}
 
@@ -356,7 +356,7 @@ func (self *SideBarWideButton) Layout(gtx C) D {
 	label_icon.Color = fg
 	label_text.Color = fg
 
-	label_icon.Font.Style = Ternary(self.is_active, font.Italic, font.Regular)
+	// label_icon.Font.Style = Ternary(self.is_active, font.Italic, font.Regular)
 	label_icon.Font.Style = Ternary(is_hoverd, font.Italic, label_icon.Font.Style)
 
 	btn := material.Button(self.Style.Theme, self.clickable, "")

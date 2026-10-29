@@ -28,17 +28,24 @@ type RenderInstPDF struct {
 	task_list []any
 
 	model_conf *model.Configuration //pdfcpu 配置
+
+	page_list []*image.RGBA
 }
 
 func NewRenderInstPDF() *RenderInstPDF {
-	self := RenderInstPDF{}
+	self := RenderInstPDF{
+		task_list: []any{},
+		page_list: []*image.RGBA{},
+	}
 	self.model_conf = model.NewDefaultConfiguration()
 	self.model_conf.Optimize = false
 	return &self
 }
 
-func (self *RenderInstPDF) New()                 {}
-func (self *RenderInstPDF) Destory()             {}
+func (self *RenderInstPDF) New() {}
+func (self *RenderInstPDF) Destory() {
+	log.Println("destory")
+}
 func (self *RenderInstPDF) Get_total_count() int { return 0 }
 func (self *RenderInstPDF) ID() string           { return self.Id }
 func (self *RenderInstPDF) Type() RenderInstType { return RenderInstType_PDF }
@@ -77,6 +84,7 @@ func (self *RenderInstPDF) Render_full_page(task *rumia.RenderTask_PDF_Full) {
 	}
 
 	img, err := self.doc.ImageDPI(task.Page, task.DPI)
+	self.page_list = append(self.page_list, img)
 	if err != nil {
 		log.Fatal(err)
 		return

@@ -160,7 +160,8 @@ func (self *BookCard) Layout(gtx layout.Context) layout.Dimensions {
 		self.callback_fn(self.book_info)
 	}
 
-	is_hover := self.clickable.Hovered()
+	is_pressed := self.clickable.Pressed()
+	is_hover := Ternary(is_pressed, true, self.clickable.Hovered())
 
 	self.extend_title.is_extend = Ternary(is_hover, true, false)
 	self.extend_tag.is_extend = Ternary(is_hover, true, false)
