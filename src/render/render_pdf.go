@@ -2,13 +2,11 @@ package render
 
 import (
 	rumia "app/src"
-	"bytes"
 	"fmt"
 	"image"
 	"io"
 	"log"
 	"os"
-	"runtime"
 	"sync"
 
 	"github.com/gen2brain/go-fitz"
@@ -108,47 +106,25 @@ func (self *RenderInstPDF) Render_full_page(task *rumia.RenderTask_PDF_Full) {
 		self.doc, _ = fitz.New(self.Path)
 	}
 
-	// img, err := self.doc.ImageDPI(task.Page, task.DPI)
-	img, err := Custom_render_full(self.doc, task.Page, task.DPI, 100, 100)
+	img := Custom_pdf_render_full(self.doc, task.Page, task.DPI)
 	self.mu.Unlock()
 
 	self.page_list = append(self.page_list, img)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
 	task.Call_fn(img)
 }
 
 // 渲染瓦片
 func (self *RenderInstPDF) Render_tile(task *rumia.RenderTask_PDF_Tile) {
-	self.doc = nil
-	box := model.Box{Rect: task.Rect}
-	page_buf := self.calc_page_data(task.Page)
-
-	var tile_buf bytes.Buffer
-	err := api.Crop(bytes.NewReader(*page_buf), &tile_buf, []string{"1"}, &box, self.model_conf)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if len(self.tile_list) > 10 {
-		for i, ptr := range self.tile_list {
-			if ptr != nil {
-				self.tile_list[i] = nil
-			}
-		}
-		runtime.GC()
-	}
-
 	self.mu.Lock()
-	self.doc, _ = fitz.NewFromReader(&tile_buf)
-	img, _ := self.doc.ImageDPI(0, task.Dpi)
-	self.tile_list = append(self.tile_list, img)
-	self.doc.Close()
-	self.doc = nil
+	img := Custom_pdf_render_tile(self.doc, task.Page, task.Dpi, [4]float64{
+		task.Rect.LL.X,
+		task.Rect.LL.Y,
+		task.Rect.UR.X,
+		task.Rect.UR.Y,
+	})
 	self.mu.Unlock()
 
+	self.page_list = append(self.page_list, img)
 	task.Call_fn(img)
 }
 

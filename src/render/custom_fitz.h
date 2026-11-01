@@ -53,6 +53,15 @@ static inline void custom_drop_pixmap(void *ctx_ptr, void *pix_ptr) {
   fz_drop_pixmap(ctx, path);
 }
 
+// 页加载测试
+static inline void custom_pdf_load_page(void *ctx_ptr, void *doc_ptr,
+                                        int page_num) {
+  fz_context *ctx = (fz_context *)ctx_ptr;
+  fz_document *doc = (fz_document *)doc_ptr;
+  fz_page *page = fz_load_page(ctx, doc, page_num);
+  fz_drop_page(ctx, page);
+}
+
 // 得到指定dpi下的某一页的渲染尺寸
 static inline void custom_pdf_get_page_size(void *ctx_ptr, void *doc_ptr,
                                             int page, float dpi) {

@@ -875,10 +875,10 @@ func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
 			pw = min(float64(size.Dx())-px, pw)
 
 			// pdf坐标,y轴反转
-			py_pdf := float64(size.Dy()) * (1.0 - (y_nor + h_nor))
+			// py_pdf := float64(size.Dy()) * (1.0 - (y_nor + h_nor))
 
 			// pdf页的百分比, 显示部分的百分比
-			rect_pdf := types.NewRectangle(px, py_pdf, px+pw, py_pdf+ph)
+			rect_pdf := types.NewRectangle(px, py, px+pw, py+ph)
 			rect_page := types.NewRectangle(px, py, px+pw, py+ph)
 
 			task := rumia.RenderTask_PDF_Tile{

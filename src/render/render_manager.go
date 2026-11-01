@@ -89,9 +89,13 @@ func (self *RenderInstManager) Run() {
 		case func():
 			v()
 		case *rumia.RenderTask_PDF_Full:
-			self.API_get_inst(task.Id).(*RenderInstPDF).Render_full_page(v)
+			if inst := self.API_get_inst(task.Id); inst != nil {
+				inst.(*RenderInstPDF).Render_full_page(v)
+			}
 		case *rumia.RenderTask_PDF_Tile:
-			self.API_get_inst(task.Id).(*RenderInstPDF).Render_tile(v)
+			if inst := self.API_get_inst(task.Id); inst != nil {
+				inst.(*RenderInstPDF).Render_tile(v)
+			}
 		default:
 			log.Println("test")
 		}
