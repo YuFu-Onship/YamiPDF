@@ -30,6 +30,7 @@ func NewPagePDF(style *ui.Style, page_router *PageRouter) *PagePDF {
 	// self.id = doc_id
 
 	self.viewer = ui.NewPDFView(pdf_path, self.Style, self.page_router.BridgeTrunk, self.page_router.Tools)
+	self.id = pdf_path
 
 	// self.viewer = ui.NewPDFView("id", style,self.page_router.Tools,)
 	return &self

@@ -695,7 +695,7 @@ func (self *PDFViewer) update_buffer() {
 		}
 
 		if self.mode_render == mode_render_tile {
-			// self.add_tile(pages)
+			self.add_tile(pages)
 		} else if self.mode_render == mode_render_page {
 			self.update_pages(pages)
 		}

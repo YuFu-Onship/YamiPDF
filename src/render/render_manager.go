@@ -26,7 +26,10 @@ type RenderAPI interface {
 	Type() RenderInstType
 	Get_total_count() int
 	Destory()
+
 	API_set_manager_api(manager_api RenderInstManagerAPI)
+	API_get_doc() *fitz.Document
+	API_initization() *fitz.Document
 }
 
 // --------------------------------------------------------------------------
@@ -118,7 +121,19 @@ func (self *RenderInstManager) API_close_inst(id string) {
 	if self.doc != nil {
 		// go-fitz无法完全释放占用的内存, 所以会导致内存占用问题
 		// 有时候多次重新打开/关闭文件能实现
+
+		// doc实例的关闭是由渲染实例自己处理的
+		if inst := self.API_get_inst(id); inst != nil {
+			inst.Destory()
+		}
+
+		// self.doc.Close()
+		// self.doc = nil
+
 		runtime.GC()
+	}
+	if _, exist := self.insts[id]; exist {
+		delete(self.insts, id)
 	}
 }
 
@@ -152,20 +167,12 @@ func (self *RenderInstManager) API_get_inst(id string) RenderAPI {
 func (self *RenderInstManager) API_add_inst(id string, file_type rumia.FileType) {
 	switch file_type {
 	case rumia.FileType_PDF:
-		if self.doc != nil {
-			self.doc.Close()
-		}
-		var err error
-		self.doc, err = fitz.New(id)
-		if err != nil {
-			log.Fatal(err)
-		}
 
-		self.insts[id] = NewRenderInstPDF().
-			API_set_path(id).
-			API_set_doc(self.doc)
+		inst := NewRenderInstPDF().API_set_path(id)
+		inst.API_set_manager_api(self)
 
-		self.insts[id].API_set_manager_api(self)
+		self.doc = inst.API_initization()
+		self.insts[id] = inst
 
 	case rumia.FileType_EPUB:
 	case rumia.FileType_TXT:

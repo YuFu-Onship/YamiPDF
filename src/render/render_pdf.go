@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
+	"sync"
 
 	"github.com/gen2brain/go-fitz"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
@@ -30,12 +32,15 @@ type RenderInstPDF struct {
 	model_conf *model.Configuration //pdfcpu 配置
 
 	page_list []*image.RGBA
+	tile_list []*image.RGBA
+	mu        sync.Mutex
 }
 
 func NewRenderInstPDF() *RenderInstPDF {
 	self := RenderInstPDF{
 		task_list: []any{},
 		page_list: []*image.RGBA{},
+		tile_list: []*image.RGBA{},
 	}
 	self.model_conf = model.NewDefaultConfiguration()
 	self.model_conf.Optimize = false
@@ -44,8 +49,27 @@ func NewRenderInstPDF() *RenderInstPDF {
 
 func (self *RenderInstPDF) New() {}
 func (self *RenderInstPDF) Destory() {
-	log.Println("destory")
+	// 确实需要手动解引用
+	for i, ptr := range self.page_list {
+		if ptr != nil {
+			self.page_list[i] = nil
+		}
+	}
+
+	for i, ptr := range self.tile_list {
+		if ptr != nil {
+			self.tile_list[i] = nil
+		}
+	}
+
+	self.mu.Lock()
+	if self.doc != nil {
+		self.doc.Close()
+		self.doc = nil
+	}
+	self.mu.Unlock()
 }
+
 func (self *RenderInstPDF) Get_total_count() int { return 0 }
 func (self *RenderInstPDF) ID() string           { return self.Id }
 func (self *RenderInstPDF) Type() RenderInstType { return RenderInstType_PDF }
@@ -79,11 +103,15 @@ func (self *RenderInstPDF) calc_page_data(page int) *[]byte {
 
 // 渲染整页
 func (self *RenderInstPDF) Render_full_page(task *rumia.RenderTask_PDF_Full) {
+	self.mu.Lock()
 	if self.doc == nil {
 		self.doc, _ = fitz.New(self.Path)
 	}
 
-	img, err := self.doc.ImageDPI(task.Page, task.DPI)
+	// img, err := self.doc.ImageDPI(task.Page, task.DPI)
+	img, err := Custom_render_full(self.doc, task.Page, task.DPI, 100, 100)
+	self.mu.Unlock()
+
 	self.page_list = append(self.page_list, img)
 	if err != nil {
 		log.Fatal(err)
@@ -104,10 +132,23 @@ func (self *RenderInstPDF) Render_tile(task *rumia.RenderTask_PDF_Tile) {
 		log.Fatal(err)
 	}
 
+	if len(self.tile_list) > 10 {
+		for i, ptr := range self.tile_list {
+			if ptr != nil {
+				self.tile_list[i] = nil
+			}
+		}
+		runtime.GC()
+	}
+
+	self.mu.Lock()
 	self.doc, _ = fitz.NewFromReader(&tile_buf)
 	img, _ := self.doc.ImageDPI(0, task.Dpi)
+	self.tile_list = append(self.tile_list, img)
 	self.doc.Close()
 	self.doc = nil
+	self.mu.Unlock()
+
 	task.Call_fn(img)
 }
 
@@ -121,6 +162,11 @@ func (self *RenderInstPDF) API_set_path(path string) *RenderInstPDF {
 func (self *RenderInstPDF) API_set_doc(doc *fitz.Document) *RenderInstPDF {
 	self.doc = doc
 	return self
+}
+
+// 得到doc实例
+func (self *RenderInstPDF) API_get_doc() *fitz.Document {
+	return self.doc
 }
 
 // 得到指定页尺寸
@@ -145,4 +191,16 @@ func (self *RenderInstPDF) API_get_num() int {
 // 设置上一层级的渲染实例管理器接口
 func (self *RenderInstPDF) API_set_manager_api(manager_api RenderInstManagerAPI) {
 	self.Manager = manager_api
+}
+
+func (self *RenderInstPDF) API_initization() *fitz.Document {
+	var err error
+	self.doc, err = fitz.New(self.Path)
+
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+
+	return self.doc
 }
