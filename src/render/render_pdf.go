@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"sync"
 
 	"github.com/gen2brain/go-fitz"
@@ -25,7 +26,8 @@ type RenderInstPDF struct {
 	doc     *fitz.Document
 	Manager RenderInstManagerAPI
 
-	task_list []any
+	task_list_over []any
+	task_list_add  []any
 
 	model_conf *model.Configuration //pdfcpu 配置
 
@@ -36,9 +38,9 @@ type RenderInstPDF struct {
 
 func NewRenderInstPDF() *RenderInstPDF {
 	self := RenderInstPDF{
-		task_list: []any{},
-		page_list: []*image.RGBA{},
-		tile_list: []*image.RGBA{},
+		task_list_over: []any{},
+		page_list:      []*image.RGBA{},
+		tile_list:      []*image.RGBA{},
 	}
 	self.model_conf = model.NewDefaultConfiguration()
 	self.model_conf.Optimize = false
@@ -60,12 +62,17 @@ func (self *RenderInstPDF) Destory() {
 		}
 	}
 
+	self.page_list = nil
+	self.tile_list = nil
+	self.task_list_over = nil
+
 	self.mu.Lock()
 	if self.doc != nil {
 		self.doc.Close()
 		self.doc = nil
 	}
 	self.mu.Unlock()
+	runtime.GC()
 }
 
 func (self *RenderInstPDF) Get_total_count() int { return 0 }

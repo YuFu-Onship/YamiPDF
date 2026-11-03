@@ -145,7 +145,7 @@ func (self *CustomPaletteRadio) Layout(gtx C) D {
 		if self.clickables[key].Clicked(gtx) {
 			self.value = key
 			self.callback(key)
-			log.Println(gtx.Constraints.Max.Y)
+			// log.Println(gtx.Constraints.Max.Y)
 		}
 
 		if i != 0 {

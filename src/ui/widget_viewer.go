@@ -337,9 +337,9 @@ func (self *PDFViewer) Layout(gtx C) D {
 	self.dpi = self.calc_dpi()
 
 	// 更新缓冲区
-	// if self.viewer_area.Y != 0 {
-	self.update_buffer()
-	// }
+	if self.viewer_area.Y >= 0 {
+		self.update_buffer()
+	}
 
 	// viewer 绘制布局
 	dims := layout.Flex{Axis: layout.Vertical, Alignment: layout.Middle}.Layout(gtx,

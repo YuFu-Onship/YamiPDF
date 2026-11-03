@@ -48,6 +48,11 @@ type RenderTask_PDF_Tile struct {
 	Call_fn    func(img *image.RGBA)
 }
 
+// 删除图像任务
+type RenderTask_PDF_ClearPix struct {
+	Img *image.RGBA
+}
+
 // 书本信息
 type BookInfo struct {
 	Title    string

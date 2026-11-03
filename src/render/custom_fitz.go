@@ -101,37 +101,46 @@ func RenderTile(doc *fitz.Document, page_num int, dpi float64, rect types.Rectan
 
 // 自定义: 渲染pdf整页
 func Custom_pdf_render_full(doc_inst *fitz.Document, page_num int, dpi float64) *image.RGBA {
+	// 结构体映射
 	internal := (*fitzDocInternal)(unsafe.Pointer(doc_inst))
 	ctx_ptr, doc_ptr := internal.ctx, internal.doc
 
+	// 转化为C指针
 	ctx := (*C.fz_context)(ctx_ptr)
 	doc := (*C.fz_document)(doc_ptr)
 
+	// 加载页
 	page := C.fz_load_page(ctx, doc, C.int(page_num))
 	defer C.fz_drop_page(ctx, page)
-	ctm := C.fz_scale(C.float(dpi)/72, C.float(dpi)/72)
 
+	// 构建渲染区域矩阵
+	ctm := C.fz_scale(C.float(dpi)/72, C.float(dpi)/72)
 	bounds := C.fz_bound_page(ctx, page)
 	bounds = C.fz_transform_rect(bounds, ctm)
-
 	bbox := C.fz_round_rect(bounds)
 
+	// 创建pix
 	pix := C.fz_new_pixmap_with_bbox(ctx, C.fz_device_rgb(ctx), bbox, nil, 1)
 	defer C.fz_drop_pixmap(ctx, pix)
 	C.fz_clear_pixmap_with_value(ctx, pix, 0xff)
 
+	// 绘制功能,内容,区域,目标区域
 	device := C.fz_new_draw_device(ctx, ctm, pix)
 	defer C.fz_drop_device(ctx, device)
 	C.fz_enable_device_hints(ctx, device, C.FZ_NO_CACHE)
 
+	// 进行渲染
 	drawMatrix := C.fz_identity
 	C.fz_run_page_contents(ctx, page, device, drawMatrix, nil)
 
+	// 得到图像行跨距
 	stride := int(C.fz_pixmap_stride(ctx, pix))
+
+	// 拿到图像像素数组的起始地址
 	pixels := C.fz_pixmap_samples(ctx, pix)
 
+	// 创建go图像
 	w, h := int(pix.w), int(pix.h)
-
 	img := image.NewRGBA(image.Rect(
 		int(bbox.x0),
 		int(bbox.y0),
@@ -139,6 +148,7 @@ func Custom_pdf_render_full(doc_inst *fitz.Document, page_num int, dpi float64) 
 		int(bbox.y1),
 	))
 
+	// 复制内存并操作
 	// stride 跨距, 等于img每行的的字节长
 	// C中为了性能考量,字节长是32的整数倍,每一行可能会有多余的无意义填充
 	// 而go的img是紧密排列的,所以需要按各自的跨距拷贝内存
