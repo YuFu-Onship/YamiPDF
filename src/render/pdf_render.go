@@ -169,7 +169,7 @@ func (self *RenderInstance) Tile_render() {
 		}
 
 		doc, _ := fitz.NewFromReader(&tile_buf)
-		img, _ := doc.ImageDPI(0, task.Dpi)
+		img, _ := doc.ImageDPI(0, task.DPI)
 		task.Call_fn(img)
 
 		doc.Close()
@@ -307,7 +307,7 @@ func (self *RenderManager) render_inst(inst *RenderInstance) {
 				}
 
 				doc, _ := fitz.NewFromReader(&tile_buf)
-				img, _ := doc.ImageDPI(0, task.Dpi)
+				img, _ := doc.ImageDPI(0, task.DPI)
 
 				doc.Close()
 

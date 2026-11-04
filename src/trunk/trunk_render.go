@@ -58,8 +58,8 @@ func (self Trunk) Add_render_inst(id string, file_type rumia.FileType) {
 }
 
 // 添加任务(追加操作)
-func (self Trunk) API_add_task(task rumia.BaseTask) {
-	// self.RenderInstManager.
+func (self Trunk) API_add_tasks(tasks []rumia.BaseTask) {
+	self.RenderInstManager.API_add_tasks(tasks)
 }
 
 // 设置任务列表(覆盖操作)

@@ -732,7 +732,10 @@ func (self *PDFViewer) update_pages(pages []int) {
 	for k, v := range self.buffer_page {
 		if !keep_pages[k] {
 			if v != nil {
-				v.Destory()
+				// v.Destory()
+				self.bridge_trunk.API_add_tasks([]rumia.BaseTask{
+					rumia.BaseTask{Id: self.doc_id, Task: &rumia.RenderTask_PDF_ReleasePix{Img: v.img}},
+				})
 				self.bridge_trunk.Refresh_window()
 			}
 			delete(self.buffer_page, k)
@@ -883,7 +886,7 @@ func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
 
 			task := rumia.RenderTask_PDF_Tile{
 				Page:       i,
-				Dpi:        self.dpi,
+				DPI:        self.dpi,
 				Rect:       rect_pdf,
 				Rect_ratio: rect_page,
 				Call_fn:    func(img *image.RGBA) { self.callback_apply_tile(i, self.dpi, rect_pdf, rect_page, img) },

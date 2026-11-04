@@ -20,8 +20,8 @@ func NewPagePDF(style *ui.Style, page_router *PageRouter) *PagePDF {
 		page_router: page_router,
 	}
 
-	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
-	pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.1 (Kamome Shirahama) (z-library.sk, 1lib.sk, z-lib.sk).pdf"
+	pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
+	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.1 (Kamome Shirahama) (z-library.sk, 1lib.sk, z-lib.sk).pdf"
 	// pdf_path := "E:/Users/YUFU/Documents/Books/单页.pdf"
 
 	// doc_id, _ := self.page_router.BridgeTrunk.Add_new_document(pdf_path)

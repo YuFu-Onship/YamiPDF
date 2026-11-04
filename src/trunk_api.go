@@ -62,7 +62,7 @@ type BridgeTrunk interface {
 	API_set_tasks(tasks []BaseTask)
 
 	// 追加渲染任务
-	API_add_task(task BaseTask)
+	API_add_tasks(tasks []BaseTask)
 
 	// 关闭渲染实例
 	API_close_inst(id string)

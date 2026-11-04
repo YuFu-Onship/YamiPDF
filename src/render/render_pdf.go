@@ -123,7 +123,7 @@ func (self *RenderInstPDF) Render_full_page(task *rumia.RenderTask_PDF_Full) {
 // 渲染瓦片
 func (self *RenderInstPDF) Render_tile(task *rumia.RenderTask_PDF_Tile) {
 	self.mu.Lock()
-	img := Custom_pdf_render_tile(self.doc, task.Page, task.Dpi, [4]float64{
+	img := Custom_pdf_render_tile(self.doc, task.Page, task.DPI, [4]float64{
 		task.Rect.LL.X,
 		task.Rect.LL.Y,
 		task.Rect.UR.X,

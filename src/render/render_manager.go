@@ -59,7 +59,7 @@ type RenderInstManager struct {
 	task_list   []rumia.BaseTask
 	task_list_1 []rumia.BaseTask // 覆写任务列表
 	task_list_2 []rumia.BaseTask // 追加任务列表
-	task_notify chan struct{}
+	chan_notify chan struct{}
 
 	mu sync.Mutex
 }
@@ -71,27 +71,40 @@ func NewRenderInstManager() *RenderInstManager {
 		task_list:   []rumia.BaseTask{},
 		task_list_1: []rumia.BaseTask{},
 		task_list_2: []rumia.BaseTask{},
-		task_notify: make(chan struct{}, 1),
+		chan_notify: make(chan struct{}, 1),
 	}
 	return &self
 }
 
 func (self *RenderInstManager) Run() {
 	for {
-		self.mu.Lock()
-		if len(self.task_list) == 0 && len(self.task_list_1) == 0 {
-			self.mu.Unlock()
 
-			<-self.task_notify
+		self.mu.Lock()
+		if len(self.task_list) == 0 && len(self.task_list_1) == 0 && len(self.task_list_2) == 0 {
+			self.mu.Unlock()
+			runtime.GC()
+			log.Println("clean")
+			<-self.chan_notify // 没有通知时堵塞
 			continue
 		}
 
-		task_1 := self.task_list_1[0]
-		self.task_list_1 = self.task_list_1[1:]
+		if len(self.task_list_1) != 0 {
+			self.task_list = append(self.task_list, self.task_list_1[0])
+			self.task_list_1 = self.task_list_1[1:]
+		}
 
-		self.task_list = append(self.task_list, task_1)
+		if len(self.task_list_2) != 0 {
+			self.task_list = append(self.task_list, self.task_list_2[0])
+			self.task_list_2 = self.task_list_2[1:]
+		}
+
+		// task_1 := self.task_list[0]
+		// self.task_list = self.task_list[1:]
+		// self.task_list = append(self.task_list, task_1)
 
 		task := self.task_list[0]
+		var zero rumia.BaseTask
+		self.task_list[0] = zero
 		self.task_list = self.task_list[1:]
 
 		self.mu.Unlock()
@@ -108,28 +121,47 @@ func (self *RenderInstManager) Run() {
 			if inst := self.API_get_inst(task.Id); inst != nil {
 				inst.(*RenderInstPDF).Render_tile(v)
 			}
-
+		case *rumia.RenderTask_PDF_ReleasePix:
+			if v.Img != nil {
+				v.Img.Pix = nil
+				v.Img = nil
+			}
 		default:
 			log.Println("test")
 		}
 
-		task_a := self.task_list_2[0]
-		self.task_list_2 = self.task_list_2[1:]
-
-		switch v := task_a.Task.(type) {
-		case *rumia.RenderTask_PDF_ClearPix:
-			v.Img = nil
-		}
+		// 		task_a := self.task_list_2[0]
+		// 		self.task_list_2 = self.task_list_2[1:]
+		//
+		// 		switch v := task_a.Task.(type) {
+		// 		case *rumia.RenderTask_PDF_ClearPix:
+		// 			v.Img = nil
+		// 		}
 
 	}
 }
 
 func (self *RenderInstManager) notify() {
 	select {
-	case self.task_notify <- struct{}{}:
-		log.Println("notify")
+	case self.chan_notify <- struct{}{}:
 	default:
 	}
+}
+
+// 覆盖替换任务列表
+func (self *RenderInstManager) API_set_tasks(tasks []rumia.BaseTask) {
+	self.mu.Lock()
+	self.task_list_1 = tasks
+	self.mu.Unlock()
+	self.notify()
+}
+
+// 追加添加任务列表
+func (self *RenderInstManager) API_add_tasks(tasks []rumia.BaseTask) {
+	self.mu.Lock()
+	self.task_list_2 = append(self.task_list, tasks...)
+	self.mu.Unlock()
+	self.notify()
 }
 
 func (self *RenderInstManager) API_close_inst(id string) {
@@ -150,23 +182,6 @@ func (self *RenderInstManager) API_close_inst(id string) {
 	if _, exist := self.insts[id]; exist {
 		delete(self.insts, id)
 	}
-}
-
-// 覆盖替换任务列表
-func (self *RenderInstManager) API_set_tasks(tasks []rumia.BaseTask) {
-	self.mu.Lock()
-	self.task_list_1 = tasks
-	self.mu.Unlock()
-	self.notify()
-}
-
-// 追加添加任务列表
-func (self *RenderInstManager) API_add_tasks(tasks []rumia.BaseTask) {
-	self.mu.Lock()
-	self.task_list_2 = append(self.task_list_2, tasks...)
-	self.task_list = append(self.task_list, tasks...)
-	self.mu.Unlock()
-	self.notify()
 }
 
 // 清空任务列表
