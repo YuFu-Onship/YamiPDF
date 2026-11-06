@@ -95,7 +95,7 @@ type CustomListWidget struct {
 	children []scrollChild
 	dir      iterationDir
 
-	pending float64
+	pending float64 // 记录的偏移量
 }
 
 // ListElement is a function that computes the D of

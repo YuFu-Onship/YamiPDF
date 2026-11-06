@@ -1350,3 +1350,21 @@ func (self *PDFViewer) API_set_id(id string) *PDFViewer {
 	self.id = id
 	return self
 }
+
+// 顺时针旋转90度
+func (self *PDFViewer) API_set_rotate() {}
+
+// 更改布局
+func (self *PDFViewer) API_set_layout(mode_layout modeLayout) {
+	self.mode_layout = mode_layout
+}
+
+// 更改排版顺序
+func (self *PDFViewer) API_set_order(mode_order modeOrder) {
+	self.mode_order = mode_order
+}
+
+// 更改着色器
+func (self *PDFViewer) API_set_shader(shader modeShader) {
+	self.mode_shader = shader
+}
