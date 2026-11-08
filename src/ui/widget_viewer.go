@@ -138,7 +138,7 @@ func (self *PageInfo) Destory() {
 	self.zoom_widget = nil
 }
 
-// pdf渲染器 ---------------------------------------------------------
+// pdf渲染器 -------------------------------------------------------------
 type PDFViewer struct {
 	motion *Motion // 动作检测
 	Style  *Style  // 样式主题
@@ -1367,4 +1367,142 @@ func (self *PDFViewer) API_set_order(mode_order modeOrder) {
 // 更改着色器
 func (self *PDFViewer) API_set_shader(shader modeShader) {
 	self.mode_shader = shader
+}
+
+// 布局变化时使用
+func (self *PDFViewer) API_resize() {
+}
+
+type PDFViewerAPI interface {
+	API_get_page_size() image.Rectangle
+}
+
+// pdf预览界面的布局排版管理器 ---------------------------------------------------------------------------------
+type LayoutManager_PDFViewer struct {
+	sizes map[int]image.Rectangle
+	pages *map[int]PageInfo
+
+	base_height float64
+
+	rad_tar      float64
+	rad_cur      float64
+	scale_tar    float64
+	scale_cur    float64
+	offset_x_tar float64
+	offset_x_cur float64
+	offset_y_tar float64
+	offset_y_cur float64
+
+	pad_height float64
+	pad_width  float64
+
+	mode_layout modeLayout
+	mode_order  modeOrder
+
+	bridge_viewer PDFViewerAPI
+}
+
+func NewLayoutManager_PDFViewer() *LayoutManager_PDFViewer {
+	self := LayoutManager_PDFViewer{
+		rad_tar: 0.0,
+		rad_cur: 0.0,
+		pages:   &map[int]PageInfo{},
+		sizes:   map[int]image.Rectangle{},
+
+		base_height: 1000,
+
+		mode_layout: mode_layout_single,
+		mode_order:  mode_order_left,
+
+		pad_height: 8.0,
+		pad_width:  8.0,
+	}
+	return &self
+}
+
+// 计算位置_世界坐标系中的位置
+func (self *LayoutManager_PDFViewer) Calc_pos(page int) image.Point {
+	// page_w := self.sizes[page].Max.X
+	// page_h := self.sizes[page].Max.Y
+
+	// h := self.base_height
+	// w := self.sizes[page].Max.X
+
+	is_RTL := self.mode_order == mode_order_right
+
+	w, h := self.calc_box_size(page)
+	x, y := 0.0, 0.0
+
+	switch self.mode_layout {
+	case mode_layout_single:
+		x = -w * 0.5
+		y = float64(page) * (h + self.pad_height)
+	case mode_layout_single_double:
+		y = (h + self.pad_height) * float64((page-1)/2+1)
+		if page == 0 {
+			x = -w * 0.5
+		}
+
+		tool.TernaryLazy(page == 0, func() float64 { return -w * 0.5 }, func() float64 {
+			tool.TernaryLazy(is_RTL,
+				func() float64 {
+
+					return 0.0
+				},
+				func() float64 {
+					return 0.0
+				},
+			)
+			return 0.0
+		})
+
+		// 		if is_RTL {
+		//
+		// 		} else {
+		//
+		// 		}
+
+	case mode_layout_double:
+		y = (h + self.pad_height) * float64(page/2)
+
+		if is_RTL {
+		} else {
+		}
+
+	}
+	return image.Pt(int(x), int(y))
+}
+
+func (self *LayoutManager_PDFViewer) API_set_pages(pages *map[int]PageInfo) *LayoutManager_PDFViewer {
+	self.pages = pages
+	return self
+}
+
+func (self *LayoutManager_PDFViewer) API_set_sizes(sizes map[int]image.Rectangle) *LayoutManager_PDFViewer {
+	self.sizes = sizes
+	return self
+}
+func (self *LayoutManager_PDFViewer) API_set_viewer(viewer PDFViewerAPI) *LayoutManager_PDFViewer {
+	self.bridge_viewer = viewer
+	return self
+}
+
+func (self *LayoutManager_PDFViewer) calc_box_size(page int) (float64, float64) {
+	size, exist := self.sizes[page]
+	if !exist {
+		size = self.bridge_viewer.API_get_page_size()
+	}
+
+	// 局部变换参数计算
+	sin_a, cos_a := math.Abs(math.Sin(self.rad_cur)), math.Abs(math.Cos(self.rad_cur))
+	pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
+
+	ele_w := pdf_w*cos_a + pdf_h*sin_a
+	ele_h := pdf_w*sin_a + pdf_h*cos_a
+	local_scale_coe := self.base_height / ele_h
+
+	box_w := ele_w * local_scale_coe
+	box_h := ele_h * local_scale_coe
+
+	return box_w, box_h
 }

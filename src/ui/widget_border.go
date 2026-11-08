@@ -43,6 +43,7 @@ func (self Border) Layout(gtx layout.Context, style *Style, context layout.Widge
 			defer trans.Pop()
 
 			return layout.Stack{}.Layout(gtx,
+
 				// 背景矩形
 				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 					if self.Text == "" {
@@ -52,6 +53,7 @@ func (self Border) Layout(gtx layout.Context, style *Style, context layout.Widge
 					draw_rectangle(gtx, pt, self.Bg, 0)
 					return layout.Dimensions{}
 				}),
+
 				// 前景文字
 				layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 					if self.Text == "" {
