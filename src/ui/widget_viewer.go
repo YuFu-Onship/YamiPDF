@@ -197,6 +197,8 @@ type PDFViewer struct {
 	mode_order  modeOrder
 
 	is_update_page bool // 更新页面
+
+	manager_layout *LayoutManager_PDFViewer
 }
 
 // 新的pdf渲染窗口
@@ -261,6 +263,8 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 		// size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
 		self.buffer_size[i] = &size
 	}
+
+	self.manager_layout = NewLayoutManager_PDFViewer().API_set_viewer(&self)
 
 	return &self
 }
@@ -1137,7 +1141,7 @@ func (self *PDFViewer) calc_box_pos_global(page int) (float64, float64) {
 	var x, y float64 = 0.0, 0.0
 
 	// 是否从右往左
-	isRTL := self.mode_order == mode_order_right
+	// isRTL := self.mode_order == mode_order_right
 
 	switch self.mode_layout {
 
@@ -1146,66 +1150,45 @@ func (self *PDFViewer) calc_box_pos_global(page int) (float64, float64) {
 		y = (h + self.pad) * float64(page)
 
 	case mode_layout_double: // 双页排版
-		l := page % 2
-		if l == 0 {
-			// 左侧页
-			w1 := self.buffer_box_size[page][0]
-			w2 := Ternary(page+1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0])
+		is_first := page%2 == 0 // 是否从左往右数的第一页
+		is_right := self.mode_order == mode_order_right
 
-			if !isRTL {
-				x = -(w1 + w2) * 0.5
-			} else {
-				x = -(w1+w2)*0.5 + w2
-			}
+		w1 := Ternary(is_first,
+			self.buffer_box_size[page][0],
+			Ternary(page-1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
+		)
 
-			y = (h + self.pad) * float64(page/2)
+		w2 := Ternary(is_first,
+			Ternary(page+1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
+			self.buffer_box_size[page][0],
+		)
 
-		} else {
-			// 右侧页
-			w1 := Ternary(page-1 < 0, 0, self.buffer_box_size[page-1][0])
-			w2 := self.buffer_box_size[page][0]
+		x = Ternary(is_first != is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w2)
+		y = (h + self.pad) * float64(page/2)
 
-			if !isRTL {
-				x = -(w1+w2)*0.5 + w1
-			} else {
-				x = -(w1 + w2) * 0.5
-			}
+	case mode_layout_single_double: // 单页+双页
+		is_first := (page-1)%2 == 0
+		is_right := self.mode_order == mode_order_right
 
-			y = (h + self.pad) * float64(page/2)
-		}
+		w1 := Ternary(is_first,
+			self.buffer_box_size[page][0],
+			self.buffer_box_size[page-1][0],
+		)
 
-	case mode_layout_single_double: // 单页+双页 (通常第0页单独居中)
-		if page == 0 {
-			x = -w * 0.5
-			y = (h + self.pad) * float64(page)
-			break
-		}
+		w2 := Ternary(is_first,
+			Ternary(page+1 < self.doc_page_num, self.buffer_box_size[page+1][0], 0),
+			self.buffer_box_size[page][0],
+		)
 
-		l := (page - 1) % 2
-		if l == 0 {
-			// 右侧页
-			w1 := self.buffer_box_size[page][0]
-			w2 := Ternary(page+1 < self.doc_page_num, self.buffer_box_size[page+1][0], 0)
+		x = Ternary(is_first,
+			Ternary(is_right, -(w1+w2)*0.5+w2, -(w1+w2)*0.5),
+			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
+		)
 
-			if !isRTL {
-				x = -(w1 + w2) * 0.5
-			} else {
-				x = -(w1+w2)*0.5 + w2
-			}
-			y = (h + self.pad) * float64((page-1)/2+1)
-
-		} else {
-			// 左侧页
-			w1 := self.buffer_box_size[page-1][0]
-			w2 := self.buffer_box_size[page][0]
-
-			if !isRTL {
-				x = -(w1+w2)*0.5 + w1
-			} else {
-				x = -(w1 + w2) * 0.5
-			}
-			y = (h + self.pad) * float64((page-1)/2+1)
-		}
+		y = Ternary(page == 0,
+			(h+self.pad)*float64(page),
+			(h+self.pad)*float64((page-1)/2+1),
+		)
 	}
 
 	self.buffer_box_pos[page] = [2]float64{x, y}
@@ -1373,16 +1356,25 @@ func (self *PDFViewer) API_set_shader(shader modeShader) {
 func (self *PDFViewer) API_resize() {
 }
 
+func (self *PDFViewer) API_get_page_size(page int) image.Rectangle {
+	w, h := self.calc_box_size(page)
+	return image.Rect(0, 0, int(w), int(h))
+}
+
 type PDFViewerAPI interface {
-	API_get_page_size() image.Rectangle
+	API_get_page_size(page int) image.Rectangle
 }
 
 // pdf预览界面的布局排版管理器 ---------------------------------------------------------------------------------
 type LayoutManager_PDFViewer struct {
-	sizes map[int]image.Rectangle
-	pages *map[int]PageInfo
+	sizes        map[int]image.Rectangle
+	pages        *map[int]PageInfo
+	doc_page_num int
 
 	base_height float64
+
+	buffer_box_size map[int][2]float64
+	buffer_box_pos  map[int][2]float64
 
 	rad_tar      float64
 	rad_cur      float64
@@ -1404,10 +1396,14 @@ type LayoutManager_PDFViewer struct {
 
 func NewLayoutManager_PDFViewer() *LayoutManager_PDFViewer {
 	self := LayoutManager_PDFViewer{
-		rad_tar: 0.0,
-		rad_cur: 0.0,
-		pages:   &map[int]PageInfo{},
-		sizes:   map[int]image.Rectangle{},
+		rad_tar:      0.0,
+		rad_cur:      0.0,
+		pages:        &map[int]PageInfo{},
+		sizes:        map[int]image.Rectangle{},
+		doc_page_num: 0,
+
+		buffer_box_size: map[int][2]float64{},
+		buffer_box_pos:  map[int][2]float64{},
 
 		base_height: 1000,
 
@@ -1425,50 +1421,55 @@ func (self *LayoutManager_PDFViewer) Calc_pos(page int) image.Point {
 	// page_w := self.sizes[page].Max.X
 	// page_h := self.sizes[page].Max.Y
 
-	// h := self.base_height
-	// w := self.sizes[page].Max.X
-
-	is_RTL := self.mode_order == mode_order_right
-
 	w, h := self.calc_box_size(page)
 	x, y := 0.0, 0.0
 
 	switch self.mode_layout {
+
 	case mode_layout_single:
 		x = -w * 0.5
 		y = float64(page) * (h + self.pad_height)
-	case mode_layout_single_double:
-		y = (h + self.pad_height) * float64((page-1)/2+1)
-		if page == 0 {
-			x = -w * 0.5
-		}
 
-		tool.TernaryLazy(page == 0, func() float64 { return -w * 0.5 }, func() float64 {
-			tool.TernaryLazy(is_RTL,
-				func() float64 {
+	case mode_layout_double: // 双页排版
+		is_first := page%2 == 0 // 是否从左往右数的第一页
+		is_right := self.mode_order == mode_order_right
 
-					return 0.0
-				},
-				func() float64 {
-					return 0.0
-				},
-			)
-			return 0.0
-		})
+		w1 := Ternary(is_first,
+			self.buffer_box_size[page][0],
+			Ternary(page-1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
+		)
 
-		// 		if is_RTL {
-		//
-		// 		} else {
-		//
-		// 		}
+		w2 := Ternary(is_first,
+			Ternary(page+1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
+			self.buffer_box_size[page][0],
+		)
 
-	case mode_layout_double:
+		x = Ternary(is_first != is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w2)
 		y = (h + self.pad_height) * float64(page/2)
 
-		if is_RTL {
-		} else {
-		}
+	case mode_layout_single_double: // 单页+双页
+		is_first := (page-1)%2 == 0
+		is_right := self.mode_order == mode_order_right
 
+		w1 := Ternary(is_first,
+			self.buffer_box_size[page][0],
+			self.buffer_box_size[page-1][0],
+		)
+
+		w2 := Ternary(is_first,
+			Ternary(page+1 < self.doc_page_num, self.buffer_box_size[page+1][0], 0),
+			self.buffer_box_size[page][0],
+		)
+
+		x = Ternary(is_first,
+			Ternary(is_right, -(w1+w2)*0.5+w2, -(w1+w2)*0.5),
+			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
+		)
+
+		y = Ternary(page == 0,
+			(h+self.pad_height)*float64(page),
+			(h+self.pad_height)*float64((page-1)/2+1),
+		)
 	}
 	return image.Pt(int(x), int(y))
 }
@@ -1490,7 +1491,7 @@ func (self *LayoutManager_PDFViewer) API_set_viewer(viewer PDFViewerAPI) *Layout
 func (self *LayoutManager_PDFViewer) calc_box_size(page int) (float64, float64) {
 	size, exist := self.sizes[page]
 	if !exist {
-		size = self.bridge_viewer.API_get_page_size()
+		size = self.bridge_viewer.API_get_page_size(page)
 	}
 
 	// 局部变换参数计算
