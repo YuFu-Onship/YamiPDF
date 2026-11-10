@@ -30,9 +30,11 @@ func NewPagePDF(style *ui.Style, page_router *PageRouter) *PagePDF {
 	}
 	self.panel_tool = NewToolPanel_PagePDF(style)
 
-	pdf_path := "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
-	// pdf_path := "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.1 (Kamome Shirahama) (z-library.sk, 1lib.sk, z-lib.sk).pdf"
-	// pdf_path := "E:/Users/YUFU/Documents/Books/单页.pdf"
+	var pdf_path string
+
+	// pdf_path = "E:/Users/YUFU/Documents/Books/comic/Witch Hat Atelier, Vol.1 (Kamome Shirahama) (z-library.sk, 1lib.sk, z-lib.sk).pdf"
+	// pdf_path = "E:/Users/YUFU/Documents/Books/单页.pdf"
+	pdf_path = "E:/Users/YUFU/Documents/Books/comic/Archives of Witch Hat Atelier (Kamome Shirahama).pdf"
 
 	// doc_id, _ := self.page_router.BridgeTrunk.Add_new_document(pdf_path)
 	self.page_router.BridgeTrunk.Add_render_inst(pdf_path, rumia.FileType_PDF)

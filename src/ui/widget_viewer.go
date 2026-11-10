@@ -138,15 +138,36 @@ func (self *PageInfo) Destory() {
 	self.zoom_widget = nil
 }
 
+// pdf渲染器中的数据
+type ViewPDF_data struct {
+	buffer_page     map[int]*PageInfo        // 页缓冲区
+	buffer_size     map[int]*image.Rectangle // 尺寸缓冲区
+	buffer_skeleton []int                    // 骨架缓冲区, 因为骨架背景需要提前加载与显示
+	buffer_box_size map[int][2]float64       // 元素包围框 w,h (世界坐标系)
+	buffer_box_pos  map[int][2]float64       // 元素包围框 x,y (世界坐标系)
+}
+
+func NewViewPDF_data() *ViewPDF_data {
+	return &ViewPDF_data{
+		buffer_page:     map[int]*PageInfo{},
+		buffer_size:     map[int]*image.Rectangle{},
+		buffer_skeleton: []int{},
+		buffer_box_size: map[int][2]float64{},
+		buffer_box_pos:  map[int][2]float64{},
+	}
+}
+
 // pdf渲染器 -------------------------------------------------------------
 type PDFViewer struct {
 	motion *Motion // 动作检测
 	Style  *Style  // 样式主题
 	id     string
 
+	data *ViewPDF_data
+
 	buffer_page     map[int]*PageInfo        // 页缓冲区
 	buffer_size     map[int]*image.Rectangle // 尺寸缓冲区
-	buffer_skeleton []int                    // 骨架缓冲区
+	buffer_skeleton []int                    // 骨架缓冲区, 因为骨架背景需要提前加载与显示
 	buffer_box_size map[int][2]float64       // 元素包围框 w,h (世界坐标系)
 	buffer_box_pos  map[int][2]float64       // 元素包围框 x,y (世界坐标系)
 
@@ -198,7 +219,7 @@ type PDFViewer struct {
 
 	is_update_page bool // 更新页面
 
-	manager_layout *LayoutManager_PDFViewer
+	manager_layout *ViewPDF_Manager_Layout
 }
 
 // 新的pdf渲染窗口
@@ -263,8 +284,8 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 		// size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
 		self.buffer_size[i] = &size
 	}
-
-	self.manager_layout = NewLayoutManager_PDFViewer().API_set_viewer(&self)
+	self.data = NewViewPDF_data()
+	self.manager_layout = NewViewPDF_Manager_Layout(self.data).API_set_viewer(&self)
 
 	return &self
 }
@@ -422,8 +443,8 @@ func (self *PDFViewer) layout_viewer(gtx C) D {
 
 					// 世界坐标位移
 					global_offset := op.Offset(image.Pt(
-						int(self.buffer_box_pos[num][0]),
-						int(self.buffer_box_pos[num][1]),
+						int(self.data.buffer_box_pos[num][0]),
+						int(self.data.buffer_box_pos[num][1]),
 					)).Push(gtx.Ops)
 
 					self.trans_local(
@@ -460,6 +481,11 @@ func (self *PDFViewer) layout_viewer(gtx C) D {
 						int(self.buffer_box_pos[num][0]),
 						int(self.buffer_box_pos[num][1]),
 					)).Push(gtx.Ops)
+
+					// global_offset := op.Offset(image.Pt(
+					// 	int(self.manager_layout.buffer_box_pos[num][0]),
+					// 	int(self.manager_layout.buffer_box_pos[num][1]),
+					// )).Push(gtx.Ops)
 
 					self.trans_local(
 						gtx,
@@ -674,12 +700,25 @@ func (self *PDFViewer) update_buffer() {
 		}
 	}
 
+	self.manager_layout.mode_layout = self.mode_layout
+	self.manager_layout.mode_order = self.mode_order
+	// self.data.buffer_box_size = self.buffer_box_size
+
 	// 包围盒缓冲区
 	for _, page := range self.buffer_skeleton {
 		box_w, box_h := self.calc_box_size(page)
 		self.buffer_box_size[page] = [2]float64{box_w, box_h}
-		x, y := self.calc_box_pos_global(page)
-		self.buffer_box_pos[page] = [2]float64{x, y}
+		self.data.buffer_box_size = self.buffer_box_size
+
+		// 原先行
+		// x, y := self.calc_box_pos_global(page)
+
+		// 使用外置管理器
+		pos := self.manager_layout.Calc_pos(page)
+		x, y := float64(pos.X), float64(pos.Y)
+
+		// self.buffer_box_pos[page] = [2]float64{x, y}
+		self.data.buffer_box_pos[page] = [2]float64{x, y}
 	}
 
 	// 渲染缓冲区
@@ -1140,11 +1179,7 @@ func (self *PDFViewer) calc_box_pos_global(page int) (float64, float64) {
 	h := self.buffer_box_size[page][1]
 	var x, y float64 = 0.0, 0.0
 
-	// 是否从右往左
-	// isRTL := self.mode_order == mode_order_right
-
 	switch self.mode_layout {
-
 	default: // 单页排版
 		x = -w * 0.5
 		y = (h + self.pad) * float64(page)
@@ -1155,15 +1190,18 @@ func (self *PDFViewer) calc_box_pos_global(page int) (float64, float64) {
 
 		w1 := Ternary(is_first,
 			self.buffer_box_size[page][0],
-			Ternary(page-1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
+			self.buffer_box_size[page-1][0],
 		)
-
 		w2 := Ternary(is_first,
 			Ternary(page+1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
 			self.buffer_box_size[page][0],
 		)
 
-		x = Ternary(is_first != is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w2)
+		x = Ternary(is_first,
+			Ternary(is_right, -(w1+w2)*0.5+w2, -(w1+w2)*0.5),
+			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
+		)
+
 		y = (h + self.pad) * float64(page/2)
 
 	case mode_layout_single_double: // 单页+双页
@@ -1174,7 +1212,6 @@ func (self *PDFViewer) calc_box_pos_global(page int) (float64, float64) {
 			self.buffer_box_size[page][0],
 			self.buffer_box_size[page-1][0],
 		)
-
 		w2 := Ternary(is_first,
 			Ternary(page+1 < self.doc_page_num, self.buffer_box_size[page+1][0], 0),
 			self.buffer_box_size[page][0],
@@ -1366,15 +1403,18 @@ type PDFViewerAPI interface {
 }
 
 // pdf预览界面的布局排版管理器 ---------------------------------------------------------------------------------
-type LayoutManager_PDFViewer struct {
-	sizes        map[int]image.Rectangle
-	pages        *map[int]PageInfo
+type ViewPDF_Manager_Layout struct {
+	sizes map[int]image.Rectangle
+	pages *map[int]PageInfo
+
+	data *ViewPDF_data
+
 	doc_page_num int
 
 	base_height float64
-
-	buffer_box_size map[int][2]float64
-	buffer_box_pos  map[int][2]float64
+	//
+	// 	buffer_box_size map[int][2]float64
+	// 	buffer_box_pos  map[int][2]float64
 
 	rad_tar      float64
 	rad_cur      float64
@@ -1394,16 +1434,19 @@ type LayoutManager_PDFViewer struct {
 	bridge_viewer PDFViewerAPI
 }
 
-func NewLayoutManager_PDFViewer() *LayoutManager_PDFViewer {
-	self := LayoutManager_PDFViewer{
+func NewViewPDF_Manager_Layout(data *ViewPDF_data) *ViewPDF_Manager_Layout {
+	self := ViewPDF_Manager_Layout{
+
+		data: data,
+
 		rad_tar:      0.0,
 		rad_cur:      0.0,
 		pages:        &map[int]PageInfo{},
 		sizes:        map[int]image.Rectangle{},
 		doc_page_num: 0,
 
-		buffer_box_size: map[int][2]float64{},
-		buffer_box_pos:  map[int][2]float64{},
+		// buffer_box_size: map[int][2]float64{},
+		// buffer_box_pos:  map[int][2]float64{},
 
 		base_height: 1000,
 
@@ -1417,34 +1460,34 @@ func NewLayoutManager_PDFViewer() *LayoutManager_PDFViewer {
 }
 
 // 计算位置_世界坐标系中的位置
-func (self *LayoutManager_PDFViewer) Calc_pos(page int) image.Point {
-	// page_w := self.sizes[page].Max.X
-	// page_h := self.sizes[page].Max.Y
-
-	w, h := self.calc_box_size(page)
-	x, y := 0.0, 0.0
+func (self *ViewPDF_Manager_Layout) Calc_pos(page int) image.Point {
+	w := self.data.buffer_box_size[page][0]
+	h := self.data.buffer_box_size[page][1]
+	var x, y float64 = 0.0, 0.0
 
 	switch self.mode_layout {
-
-	case mode_layout_single:
+	default: // 单页排版
 		x = -w * 0.5
-		y = float64(page) * (h + self.pad_height)
+		y = (h + self.pad_height) * float64(page)
 
 	case mode_layout_double: // 双页排版
 		is_first := page%2 == 0 // 是否从左往右数的第一页
 		is_right := self.mode_order == mode_order_right
 
 		w1 := Ternary(is_first,
-			self.buffer_box_size[page][0],
-			Ternary(page-1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
+			self.data.buffer_box_size[page][0],
+			self.data.buffer_box_size[page-1][0],
 		)
-
 		w2 := Ternary(is_first,
-			Ternary(page+1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
-			self.buffer_box_size[page][0],
+			Ternary(page+1 >= self.doc_page_num, 0, self.data.buffer_box_size[page+1][0]),
+			self.data.buffer_box_size[page][0],
 		)
 
-		x = Ternary(is_first != is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w2)
+		x = Ternary(is_first,
+			Ternary(is_right, -(w1+w2)*0.5+w2, -(w1+w2)*0.5),
+			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
+		)
+
 		y = (h + self.pad_height) * float64(page/2)
 
 	case mode_layout_single_double: // 单页+双页
@@ -1452,13 +1495,12 @@ func (self *LayoutManager_PDFViewer) Calc_pos(page int) image.Point {
 		is_right := self.mode_order == mode_order_right
 
 		w1 := Ternary(is_first,
-			self.buffer_box_size[page][0],
-			self.buffer_box_size[page-1][0],
+			self.data.buffer_box_size[page][0],
+			self.data.buffer_box_size[page-1][0],
 		)
-
 		w2 := Ternary(is_first,
-			Ternary(page+1 < self.doc_page_num, self.buffer_box_size[page+1][0], 0),
-			self.buffer_box_size[page][0],
+			Ternary(page+1 < self.doc_page_num, self.data.buffer_box_size[page+1][0], 0),
+			self.data.buffer_box_size[page][0],
 		)
 
 		x = Ternary(is_first,
@@ -1471,24 +1513,26 @@ func (self *LayoutManager_PDFViewer) Calc_pos(page int) image.Point {
 			(h+self.pad_height)*float64((page-1)/2+1),
 		)
 	}
+
+	self.data.buffer_box_pos[page] = [2]float64{x, y}
 	return image.Pt(int(x), int(y))
 }
 
-func (self *LayoutManager_PDFViewer) API_set_pages(pages *map[int]PageInfo) *LayoutManager_PDFViewer {
+func (self *ViewPDF_Manager_Layout) API_set_pages(pages *map[int]PageInfo) *ViewPDF_Manager_Layout {
 	self.pages = pages
 	return self
 }
 
-func (self *LayoutManager_PDFViewer) API_set_sizes(sizes map[int]image.Rectangle) *LayoutManager_PDFViewer {
+func (self *ViewPDF_Manager_Layout) API_set_sizes(sizes map[int]image.Rectangle) *ViewPDF_Manager_Layout {
 	self.sizes = sizes
 	return self
 }
-func (self *LayoutManager_PDFViewer) API_set_viewer(viewer PDFViewerAPI) *LayoutManager_PDFViewer {
+func (self *ViewPDF_Manager_Layout) API_set_viewer(viewer PDFViewerAPI) *ViewPDF_Manager_Layout {
 	self.bridge_viewer = viewer
 	return self
 }
 
-func (self *LayoutManager_PDFViewer) calc_box_size(page int) (float64, float64) {
+func (self *ViewPDF_Manager_Layout) calc_box_size(page int) (float64, float64) {
 	size, exist := self.sizes[page]
 	if !exist {
 		size = self.bridge_viewer.API_get_page_size(page)
