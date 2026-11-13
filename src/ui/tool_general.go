@@ -56,9 +56,16 @@ func Ternary[T any](cond bool, trueVal, falseVal T) T {
 }
 
 // 惰性泛型三元(避免提前取值)
+//   - 避免重复手写构建函数可使用Val(v)
 func TernaryLazy[T any](cond bool, trueVal func() T, falseVal func() T) T {
 	if cond {
 		return trueVal()
 	}
 	return falseVal()
+}
+
+func Val[T any](val T) func() T {
+	return func() T {
+		return val
+	}
 }

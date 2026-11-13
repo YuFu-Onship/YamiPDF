@@ -91,16 +91,12 @@ type ViewInterface interface {
 
 // 页元素信息
 type PageInfo struct {
-	Num    int             // 当前页索引
-	Size   image.Rectangle // 当前页尺寸
-	Widget *widget.Image   // 当前页图像
+	Num    int           // 当前页索引
+	Widget *widget.Image // 当前页图像
 	img    *image.RGBA
 	DPI    float64 // 当前页的渲染dpi
 
 	mode_shader modeShader
-
-	box_w, box_h float64    // 当前页面元素尺寸,高度始终为base_height
-	box          [4]float64 // 包围框信息,x,y,w,h
 
 	zoom_img       *image.RGBA
 	zoom_widget    *widget.Image // 放大显示的瓦片
@@ -140,36 +136,77 @@ func (self *PageInfo) Destory() {
 
 // pdf渲染器中的数据
 type ViewPDF_data struct {
-	buffer_page     map[int]*PageInfo        // 页缓冲区
-	buffer_size     map[int]*image.Rectangle // 尺寸缓冲区
-	buffer_skeleton []int                    // 骨架缓冲区, 因为骨架背景需要提前加载与显示
-	buffer_box_size map[int][2]float64       // 元素包围框 w,h (世界坐标系)
-	buffer_box_pos  map[int][2]float64       // 元素包围框 x,y (世界坐标系)
+	doc_num int // pdf总页数
+
+	buffer_page      map[int]*PageInfo       // 页缓冲区
+	buffer_page_size map[int]image.Rectangle // 尺寸缓冲区
+	buffer_skeleton  []int                   // 骨架缓冲区, 因为骨架背景需要提前加载与显示
+	buffer_box_size  map[int][2]float64      // 元素包围框 w,h (世界坐标系)
+	buffer_box_pos   map[int][2]float64      // 元素包围框 x,y (世界坐标系)
+
+	offset_x_tar float64
+	offset_x_cur float64
+	offset_y_tar float64
+	offset_y_cur float64
+	scale_tar    float64
+	scale_cur    float64
+
+	rad_tar float64
+	rad_cur float64
+
+	pad_height float64
+	pad_width  float64
+
+	radius float64
+
+	base_height float64
 }
 
 func NewViewPDF_data() *ViewPDF_data {
 	return &ViewPDF_data{
-		buffer_page:     map[int]*PageInfo{},
-		buffer_size:     map[int]*image.Rectangle{},
-		buffer_skeleton: []int{},
-		buffer_box_size: map[int][2]float64{},
-		buffer_box_pos:  map[int][2]float64{},
+		buffer_page:      map[int]*PageInfo{},
+		buffer_page_size: map[int]image.Rectangle{},
+		buffer_skeleton:  []int{},
+		buffer_box_size:  map[int][2]float64{},
+		buffer_box_pos:   map[int][2]float64{},
+
+		offset_x_tar: 0,
+		offset_x_cur: 0,
+		offset_y_tar: 0,
+		offset_y_cur: 0,
+		scale_tar:    1.0,
+		scale_cur:    1.0,
+
+		rad_tar: 0.0,
+		rad_cur: 0.0,
+
+		pad_height: 8,
+		pad_width:  0,
+
+		radius: 8,
+
+		base_height: 1000,
 	}
 }
+
+/*
+ * 渲染坐标系设计:
+ *	1. pdf坐标系
+ * 	2. 控件包围盒内部坐标系(将pdf映射到高度恒为1000的控件中,并处理旋转与缩放)
+ * 	3. 世界坐标系(不同控件在世界中的排列)
+ *	4. 视口坐标系(世界坐标系在视口中的显示)
+ */
 
 // pdf渲染器 -------------------------------------------------------------
 type PDFViewer struct {
 	motion *Motion // 动作检测
 	Style  *Style  // 样式主题
-	id     string
 
 	data *ViewPDF_data
 
-	buffer_page     map[int]*PageInfo        // 页缓冲区
-	buffer_size     map[int]*image.Rectangle // 尺寸缓冲区
-	buffer_skeleton []int                    // 骨架缓冲区, 因为骨架背景需要提前加载与显示
-	buffer_box_size map[int][2]float64       // 元素包围框 w,h (世界坐标系)
-	buffer_box_pos  map[int][2]float64       // 元素包围框 x,y (世界坐标系)
+	buffer_page     map[int]*PageInfo       // 页缓冲区
+	buffer_size     map[int]image.Rectangle // 尺寸缓冲区
+	buffer_skeleton []int                   // 骨架缓冲区, 因为骨架背景需要提前加载与显示
 
 	offsetX_tar float64
 	offsetX_cur float64
@@ -193,18 +230,15 @@ type PDFViewer struct {
 	clickable_order   widget.Clickable
 	clickable_release widget.Clickable
 
-	doc_id       string         // 文档id
-	doc_scale    float64        // 文档控件尺寸/文件实际尺寸
-	doc_info     map[string]any // 文档信息
-	doc_page_num int            // 文档页数
+	doc_id    string         // 文档id
+	doc_scale float64        // 文档控件尺寸/文件实际尺寸
+	doc_info  map[string]any // 文档信息
 
 	viewer_area image.Point // 渲染区域
 
 	pad         float64 // 页间距
 	page_radius int     // 固定的元素圆角半径
-	base_height float64 // 固定的元素高
 
-	// bridge_trunk BridgeTrunk // 外部接口
 	bridge_trunk rumia.BridgeTrunk // 外部接口
 
 	dpi float64 // 全局dpi
@@ -219,7 +253,8 @@ type PDFViewer struct {
 
 	is_update_page bool // 更新页面
 
-	manager_layout *ViewPDF_Manager_Layout
+	view_pdf_manager_layout *ViewPDF_Manager_Layout // 控制布局
+	view_pdf_page_box       *ViewPDF_PageBox        // 控制每个页面的渲染
 }
 
 // 新的pdf渲染窗口
@@ -227,15 +262,12 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 	self := PDFViewer{
 		Style:  style,
 		motion: NewMotion(),
-		id:     "",
 
 		pad: 8,
 
 		buffer_page:     map[int]*PageInfo{},
-		buffer_size:     make(map[int]*image.Rectangle),
+		buffer_size:     make(map[int]image.Rectangle),
 		buffer_skeleton: []int{},
-		buffer_box_size: map[int][2]float64{},
-		buffer_box_pos:  map[int][2]float64{},
 
 		offsetX_tar: 0,
 		offsetX_cur: 0,
@@ -249,7 +281,7 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 
 		index_focus: 0,
 
-		base_height: 1000.0,
+		// base_height: 1000.0,
 		page_radius: 8,
 
 		doc_id:    doc_id,
@@ -271,9 +303,10 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 		clickable_order:   widget.Clickable{},
 		clickable_release: widget.Clickable{},
 	}
+	self.data = NewViewPDF_data()
 
 	self.doc_info = self.bridge_trunk.API_get_pdf_info(doc_id)
-	self.doc_page_num = self.doc_info["page_num"].(int)
+	// self.doc_page_num = self.doc_info["page_num"].(int)
 
 	self.mode_shader = mode_shader_oriangle
 	self.mode_layout = mode_layout_double
@@ -282,11 +315,14 @@ func NewPDFView(doc_id string, style *Style, bridge_trunk rumia.BridgeTrunk, bri
 	for i := range self.doc_info["page_num"].(int) {
 		size := self.bridge_trunk.API_get_pdf_page_size(self.doc_id, i)
 		// size, _ := self.bridge_trunk.Get_size(self.doc_id, i)
-		self.buffer_size[i] = &size
+		self.buffer_size[i] = size
+		self.data.buffer_page_size[i] = size
 	}
-	self.data = NewViewPDF_data()
-	self.manager_layout = NewViewPDF_Manager_Layout(self.data).API_set_viewer(&self)
 
+	self.data.doc_num = self.doc_info["page_num"].(int)
+
+	self.view_pdf_manager_layout = NewViewPDF_Manager_Layout(self.data).API_set_viewer(&self)
+	self.view_pdf_page_box = NewViewPDF_PageBox(self.data)
 	return &self
 }
 
@@ -394,6 +430,8 @@ func (self *PDFViewer) Layout(gtx C) D {
 		}, 0.4)
 	}
 
+	self.data.rad_cur = self.rotateArc_cur
+
 	self.Style.AniSys.Ease64(&self.rotateArc_cur, 0.0005, &self.rotateArc_cur, self.rotateArc_tar, 0.3)
 
 	return dims
@@ -406,7 +444,7 @@ func (self *PDFViewer) layout_viewer(gtx C) D {
 	self.viewer_area = gtx.Constraints.Max
 
 	self.mode_render = mode_render_page
-	if self.base_height*self.scale_tar*0.8 > float64(self.viewer_area.Y) {
+	if self.data.base_height*self.scale_tar*0.8 > float64(self.viewer_area.Y) {
 		self.mode_render = mode_render_tile
 	}
 
@@ -438,8 +476,8 @@ func (self *PDFViewer) layout_viewer(gtx C) D {
 					size := self.buffer_size[num]
 					sin_a, cos_a := math.Abs(math.Sin(self.rotateArc_cur)), math.Abs(math.Cos(self.rotateArc_cur))
 					pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
-					local_scale_coe := self.base_height / (pdf_w*sin_a + pdf_h*cos_a)
-					min_x, min_y, _, _ := self.get_page_box(num)
+					local_scale_coe := self.data.base_height / (pdf_w*sin_a + pdf_h*cos_a)
+					min_x, min_y, _, _ := self.calc_page_box(num)
 
 					// 世界坐标位移
 					global_offset := op.Offset(image.Pt(
@@ -463,23 +501,24 @@ func (self *PDFViewer) layout_viewer(gtx C) D {
 
 				// 绘制内容
 				for num, inst := range self.buffer_page {
-					size := self.buffer_size[inst.Num]
+					// size := self.buffer_size[inst.Num]
 
 					// 局部变换参数计算
-					sin_a, cos_a := math.Abs(math.Sin(self.rotateArc_cur)), math.Abs(math.Cos(self.rotateArc_cur))
-					pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
-					local_scale_coe := self.base_height / (pdf_w*sin_a + pdf_h*cos_a)
+					// sin_a, cos_a := math.Abs(math.Sin(self.rotateArc_cur)), math.Abs(math.Cos(self.rotateArc_cur))
+					// pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
+					// local_scale_coe := self.data.base_height / (pdf_w*sin_a + pdf_h*cos_a)
 
-					min_x, min_y, box_w, box_h := self.get_page_box(inst.Num)
-					inst.box_w, inst.box_h = box_w, box_h
+					// min_x, min_y, box_w, box_h := self.calc_page_box(inst.Num)
+					// min_x, min_y, _, _ := self.calc_page_box(inst.Num)
 
 					// self.buffer_box[num] = [4]float64{0, 0, box_w, box_h}
 
 					// 世界坐标位移
-					self.calc_box_pos_global(num)
+					// self.calc_box_pos_global(num)
+
 					global_offset := op.Offset(image.Pt(
-						int(self.buffer_box_pos[num][0]),
-						int(self.buffer_box_pos[num][1]),
+						int(self.data.buffer_box_pos[num][0]),
+						int(self.data.buffer_box_pos[num][1]),
 					)).Push(gtx.Ops)
 
 					// global_offset := op.Offset(image.Pt(
@@ -487,17 +526,25 @@ func (self *PDFViewer) layout_viewer(gtx C) D {
 					// 	int(self.manager_layout.buffer_box_pos[num][1]),
 					// )).Push(gtx.Ops)
 
-					self.trans_local(
-						gtx,
-						-min_x, -min_y,
-						self.rotateArc_cur,
-						local_scale_coe,
-						pdf_w,
-						pdf_h,
-						func() {
-							self.draw_full(gtx, inst)
-							self.draw_tile(gtx, inst)
-						})
+					self.view_pdf_page_box.Draw(gtx, inst.Num)
+
+					// 					self.trans_local(
+					// 						gtx,
+					// 						-min_x, -min_y,
+					// 						self.rotateArc_cur,
+					// 						local_scale_coe,
+					// 						pdf_w,
+					// 						pdf_h,
+					// 						func() {
+					// 							self.view_pdf_page_box.Draw(gtx, inst.Num)
+					// 						},
+					// 						// func() {},
+					// 					)
+
+					// func() {
+					// 	self.draw_full(gtx, inst)
+					// 	self.draw_tile(gtx, inst)
+					// })
 
 					global_offset.Pop()
 				}
@@ -639,7 +686,7 @@ func (self *PDFViewer) draw_tile(gtx C, inst *PageInfo) {
 
 // 得到指定页元素尺寸包围框信息,widget坐标系
 //   - x,y,w,h (局部坐标系)
-func (self *PDFViewer) get_page_box(page int) (float64, float64, float64, float64) {
+func (self *PDFViewer) calc_page_box(page int) (float64, float64, float64, float64) {
 	size := self.buffer_size[page]
 	arc := self.rotateArc_cur
 
@@ -651,7 +698,7 @@ func (self *PDFViewer) get_page_box(page int) (float64, float64, float64, float6
 	ele_w := pdf_w*cos_a + pdf_h*sin_a
 	ele_h := pdf_w*sin_a + pdf_h*cos_a
 
-	local_scale_coe := self.base_height / ele_h
+	local_scale_coe := self.data.base_height / ele_h
 
 	// 计算位移量
 	w, h := pdf_w*local_scale_coe, pdf_h*local_scale_coe
@@ -669,6 +716,7 @@ func (self *PDFViewer) get_page_box(page int) (float64, float64, float64, float6
 func (self *PDFViewer) update_buffer() {
 	self.dpi = self.calc_dpi()
 	pages := self.calc_page_list()
+	doc_num := self.data.doc_num
 
 	self.index_focus = self.index_center
 
@@ -677,15 +725,18 @@ func (self *PDFViewer) update_buffer() {
 
 	// 尺寸缓冲区
 	size_index_min := max(page-30, 0)
-	size_index_max := min(page+30, self.doc_page_num-1)
+	size_index_max := min(page+30, doc_num-1)
 
-	if self.buffer_size[size_index_min] == nil || self.buffer_size[size_index_max] == nil {
+	_, exist_min := self.buffer_size[size_index_min]
+	_, exist_max := self.buffer_size[size_index_max]
+	if !exist_min || !exist_max {
 		size_index_start := max(page-60, 0)
-		size_index_end := min(page+60, self.doc_page_num-1)
+		size_index_end := min(page+60, doc_num-1)
 
 		for i := size_index_start; i <= size_index_end; i++ {
 			r, _ := self.bridge_trunk.Get_size(self.doc_id, i)
-			self.buffer_size[i] = &r
+			self.buffer_size[i] = r
+			self.data.buffer_page_size[i] = r
 		}
 	}
 
@@ -695,29 +746,25 @@ func (self *PDFViewer) update_buffer() {
 		if last := page - i; last >= 0 {
 			self.buffer_skeleton = append(self.buffer_skeleton, last)
 		}
-		if next := page + i; next < self.doc_page_num {
+		if next := page + i; next < doc_num {
 			self.buffer_skeleton = append(self.buffer_skeleton, next)
 		}
 	}
 
-	self.manager_layout.mode_layout = self.mode_layout
-	self.manager_layout.mode_order = self.mode_order
+	self.view_pdf_manager_layout.mode_layout = self.mode_layout
+	self.view_pdf_manager_layout.mode_order = self.mode_order
 	// self.data.buffer_box_size = self.buffer_box_size
 
 	// 包围盒缓冲区
 	for _, page := range self.buffer_skeleton {
 		box_w, box_h := self.calc_box_size(page)
-		self.buffer_box_size[page] = [2]float64{box_w, box_h}
-		self.data.buffer_box_size = self.buffer_box_size
-
-		// 原先行
-		// x, y := self.calc_box_pos_global(page)
+		self.data.buffer_box_size[page] = [2]float64{box_w, box_h}
+		self.data.buffer_box_size = self.data.buffer_box_size
 
 		// 使用外置管理器
-		pos := self.manager_layout.Calc_pos(page)
+		pos := self.view_pdf_manager_layout.Calc_pos(page)
 		x, y := float64(pos.X), float64(pos.Y)
 
-		// self.buffer_box_pos[page] = [2]float64{x, y}
 		self.data.buffer_box_pos[page] = [2]float64{x, y}
 	}
 
@@ -730,10 +777,15 @@ func (self *PDFViewer) update_buffer() {
 				info := PageInfo{
 					Num:    page,
 					Widget: nil,
-					Size:   *self.buffer_size[page],
 					DPI:    self.dpi,
 				}
 				self.buffer_page[page] = &info
+				self.data.buffer_page[page] = &PageInfo{
+					Num:         page,
+					Widget:      nil,
+					DPI:         self.dpi,
+					mode_shader: mode_shader_oriangle,
+				}
 			}
 		}
 
@@ -747,7 +799,7 @@ func (self *PDFViewer) update_buffer() {
 
 // 更新某一目标页附近的缓冲区
 func (self *PDFViewer) update_buffer_target(page int) {
-	if page < 0 || page >= self.doc_page_num {
+	if page < 0 || page >= self.data.doc_num {
 		return
 	}
 	self.apply_center(page)
@@ -757,7 +809,7 @@ func (self *PDFViewer) update_buffer_target(page int) {
 // 得到当前视口横轴中心的页号
 func (self *PDFViewer) get_focus_page() int {
 	_, y := self.from_screen_to_world(0, float64(self.viewer_area.Y)*0.5)
-	p := int(math.Max(0, y/self.base_height))
+	p := int(math.Max(0, y/self.data.base_height))
 	return p
 }
 
@@ -830,7 +882,7 @@ func (self *PDFViewer) update_tile(pages []int) {
 
 // 增加瓦片
 func (self *PDFViewer) add_tile(pages []int) {
-	tile_tasks := self.get_tile_rect(pages)
+	tile_tasks := self.calc_tile_rect(pages)
 
 	tasks := []rumia.BaseTask{}
 	for _, task := range tile_tasks {
@@ -846,18 +898,18 @@ func (self *PDFViewer) add_tile(pages []int) {
 }
 
 // 得到当前视口的瓦片信息
-func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
+func (self *PDFViewer) calc_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
 	tasks := []*rumia.RenderTask_PDF_Tile{}
 	// for i := self.index_focus - 1; i <= self.index_focus+1; i += 1 {
 	for _, i := range pages {
-		if i >= 0 && i < self.doc_page_num {
+		if i >= 0 && i < self.data.doc_num {
 			size := self.buffer_size[i]
 
 			// 有效显示区域坐标
-			box_w, box_h := self.buffer_box_size[i][0], self.buffer_box_size[i][1]
+			box_w, box_h := self.data.buffer_box_size[i][0], self.data.buffer_box_size[i][1]
 
 			// 在视口坐标系上的位移坐标
-			box_x, box_y := self.from_world_to_screen(self.buffer_box_pos[i][0], self.buffer_box_pos[i][1])
+			box_x, box_y := self.from_world_to_screen(self.data.buffer_box_pos[i][0], self.data.buffer_box_pos[i][1])
 
 			// 视口坐标系, 显示区域
 			ll_x := math.Max(0, box_x)
@@ -887,7 +939,7 @@ func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
 
 			var x_nor, y_nor, w_nor, h_nor float64
 
-			state := self.to_arc_state(self.rotateArc_tar)
+			state := self.from_rad_to_state(self.rotateArc_tar)
 			switch state {
 			case 0:
 				x_nor = w_1 / widget_w
@@ -942,37 +994,39 @@ func (self *PDFViewer) get_tile_rect(pages []int) []*rumia.RenderTask_PDF_Tile {
 }
 
 // 得到当前视口的整页数,从中心页向上和向下螺旋排布
-func (self *PDFViewer) get_page_list() []int {
-	min_count := 0
-	max_count := self.doc_page_num - 1
-	_, y := self.from_screen_to_world(0, float64(self.viewer_area.Y)*0.5)
-	center_page := int(y / (self.base_height + self.pad))
-	p := max(min_count, min(max_count, center_page))
-
-	pages := []int{p}
-	b := math.Ceil(float64(self.viewer_area.Y)/((self.base_height+self.pad)*self.scale_tar)) + 1
-	for i := range int(b * 0.5) {
-		if np := p + (i + 1); np < self.doc_page_num-1 {
-			_, nsy, _, _ := self.get_page_pos_on_viewer_tar(np)
-			if nsy < float64(self.viewer_area.Y) {
-				pages = append(pages, np)
-			}
-		}
-
-		if lp := p - (i + 1); lp >= 0 {
-			_, _, _, ley := self.get_page_pos_on_viewer_tar(lp)
-			if ley >= 0 {
-				pages = append(pages, lp)
-			}
-		}
-	}
-	return pages
-}
+// func (self *PDFViewer) get_page_list() []int {
+// 	min_count := 0
+// 	max_count := self.doc_page_num - 1
+// 	_, y := self.from_screen_to_world(0, float64(self.viewer_area.Y)*0.5)
+// 	center_page := int(y / (self.data.base_height + self.pad))
+// 	p := max(min_count, min(max_count, center_page))
+//
+// 	pages := []int{p}
+// 	b := math.Ceil(float64(self.viewer_area.Y)/((self.data.base_height+self.pad)*self.scale_tar)) + 1
+// 	for i := range int(b * 0.5) {
+// 		if np := p + (i + 1); np < self.doc_page_num-1 {
+// 			_, nsy, _, _ := self.get_page_pos_on_viewer_tar(np)
+// 			if nsy < float64(self.viewer_area.Y) {
+// 				pages = append(pages, np)
+// 			}
+// 		}
+//
+// 		if lp := p - (i + 1); lp >= 0 {
+// 			_, _, _, ley := self.get_page_pos_on_viewer_tar(lp)
+// 			if ley >= 0 {
+// 				pages = append(pages, lp)
+// 			}
+// 		}
+// 	}
+// 	return pages
+// }
 
 // 计算当前视口内可见的页面列表,自上而下
 func (self *PDFViewer) calc_page_list() []int {
+	doc_num := self.data.doc_num
+
 	pages := []int{}
-	if self.doc_page_num == 0 {
+	if doc_num == 0 {
 		return pages
 	}
 
@@ -982,18 +1036,18 @@ func (self *PDFViewer) calc_page_list() []int {
 	var c1, c2 float64
 	switch self.mode_layout {
 	default:
-		c1 = math.Floor(lly / (self.base_height + self.pad))
-		c2 = math.Ceil(ury / (self.base_height + self.pad))
+		c1 = math.Floor(lly / (self.data.base_height + self.pad))
+		c2 = math.Ceil(ury / (self.data.base_height + self.pad))
 	case mode_layout_double:
-		c1 = math.Floor(lly/(self.base_height+self.pad)) * 2
-		c2 = math.Ceil(ury/(self.base_height+self.pad))*2 - 1
+		c1 = math.Floor(lly/(self.data.base_height+self.pad)) * 2
+		c2 = math.Ceil(ury/(self.data.base_height+self.pad))*2 - 1
 	case mode_layout_single_double:
-		c1 = math.Floor(lly/(self.base_height+self.pad))*2 - 1
-		c2 = math.Ceil(ury/(self.base_height+self.pad))*2 - 2
+		c1 = math.Floor(lly/(self.data.base_height+self.pad))*2 - 1
+		c2 = math.Ceil(ury/(self.data.base_height+self.pad))*2 - 2
 	}
 
 	for i := c1; i <= c2; i++ {
-		if i >= 0 && i < float64(self.doc_page_num) {
+		if i >= 0 && i < float64(doc_num) {
 			pages = append(pages, int(i))
 		}
 	}
@@ -1003,12 +1057,14 @@ func (self *PDFViewer) calc_page_list() []int {
 
 // 计算一组页中的中间数
 func (self *PDFViewer) calc_center_count(pages []int) int {
+	doc_num := self.data.doc_num
+
 	if len(pages) == 0 {
 		_, cy := self.from_screen_to_world(0.0, float64(self.viewer_area.Y))
 		if cy <= 0 {
 			return 0
 		} else {
-			return self.doc_page_num - 1
+			return doc_num - 1
 		}
 	}
 
@@ -1024,9 +1080,10 @@ func (self *PDFViewer) calc_center_count(pages []int) int {
 			continue
 		}
 
-		if page_num := pages[idx]; page_num >= 0 && page_num < self.doc_page_num {
-			_, lly := self.calc_box_pos_global(page_num)
-			ury := lly + self.base_height + self.pad
+		if page_num := pages[idx]; page_num >= 0 && page_num < doc_num {
+			p := self.view_pdf_manager_layout.Calc_pos(page_num)
+			lly := float64(p.Y)
+			ury := lly + self.data.base_height + self.pad
 
 			if dist := math.Abs((lly+ury)*0.5 - viewer_cy); dist < minDist {
 				minDist = dist
@@ -1034,36 +1091,26 @@ func (self *PDFViewer) calc_center_count(pages []int) int {
 			}
 		}
 	}
-
 	return best_p
 }
 
-// 得到一页在视口坐标系中的坐标(根据目标值算)
-func (self *PDFViewer) get_page_pos_on_viewer_tar(page int) (float64, float64, float64, float64) {
+// 得到一页在视口坐标系中的坐标
+//   - is_tar==true 目标参数值
+//   - is_tar==false 当前参数值
+func (self *PDFViewer) calc_page_pos_on_viewer(page int, is_tar bool) (float64, float64, float64, float64) {
 	img_w := float64(self.buffer_size[page].Dx())
 	img_h := float64(self.buffer_size[page].Dy())
-	ratio := self.base_height / img_h
+	ratio := self.data.base_height / img_h
 
-	start_x := math.Max(0.0, self.offsetX_tar-img_w*ratio*self.scale_tar*0.5)
-	start_y := math.Max(0.0, self.offsetY_tar+(self.base_height+self.pad)*float64(page)*self.scale_tar)
+	offset_x := Ternary(is_tar, self.offsetX_tar, self.offsetX_cur)
+	offset_y := Ternary(is_tar, self.offsetY_tar, self.offsetY_cur)
+	scale := Ternary(is_tar, self.scale_tar, self.scale_cur)
 
-	end_x := math.Min(float64(self.viewer_area.X), self.offsetX_tar-img_w*ratio*self.scale_tar*0.5+img_w*ratio*self.scale_tar)
-	end_y := math.Min(float64(self.viewer_area.Y), self.offsetY_tar+(self.base_height+self.pad)*float64(page+1)*self.scale_tar-self.pad*self.scale_tar)
+	start_x := math.Max(0.0, offset_x-img_w*ratio*scale*0.5)
+	start_y := math.Max(0.0, offset_y+(self.data.base_height+self.pad)*float64(page)*scale)
 
-	return start_x, start_y, end_x, end_y
-}
-
-// 得到一页在视口坐标系中的坐标(根据当前值算)
-func (self *PDFViewer) get_page_pos_on_viewer_cur(page int) (float64, float64, float64, float64) {
-	img_w := float64(self.buffer_size[page].Dx())
-	img_h := float64(self.buffer_size[page].Dy())
-	ratio := self.base_height / img_h
-
-	start_x := math.Max(0.0, self.offsetX_cur-img_w*ratio*self.scale_cur*0.5)
-	start_y := math.Max(0.0, self.offsetY_cur+(self.base_height+self.pad)*float64(page)*self.scale_cur)
-
-	end_x := math.Min(float64(self.viewer_area.X), self.offsetX_cur-img_w*ratio*self.scale_cur*0.5+img_w*ratio*self.scale_cur)
-	end_y := math.Min(float64(self.viewer_area.Y), self.offsetY_cur+(self.base_height+self.pad)*float64(page+1)*self.scale_cur-self.pad*self.scale_cur)
+	end_x := math.Min(float64(self.viewer_area.X), offset_x-img_w*ratio*scale*0.5+img_w*ratio*scale)
+	end_y := math.Min(float64(self.viewer_area.Y), offset_y+(self.data.base_height+self.pad)*float64(page+1)*scale-self.pad*scale)
 
 	return start_x, start_y, end_x, end_y
 }
@@ -1071,10 +1118,113 @@ func (self *PDFViewer) get_page_pos_on_viewer_cur(page int) (float64, float64, f
 // 计算dpi
 func (self *PDFViewer) calc_dpi() float64 {
 	scale := math.Round(self.scale_tar*10) / 10
-	dpi := 72.0 * self.base_height * scale / float64(self.buffer_size[self.index_focus].Dy())
+	dpi := 72.0 * self.data.base_height * scale / float64(self.buffer_size[self.index_focus].Dy())
 	dpi = math.Round(math.Min(1000, dpi))
 	return dpi
 }
+
+// 计算指定页的包围框尺寸
+//   - 前提:尺寸缓冲区存在
+func (self *PDFViewer) calc_box_size(page int) (float64, float64) {
+	if page < 0 || page >= self.data.doc_num {
+		return 0, 0
+	}
+
+	// 	if size, exist := self.data.buffer_box_size[page]; exist {
+	// 		return size[0], size[1]
+	// 	}
+
+	size, _ := self.buffer_size[page]
+
+	// 局部变换参数计算
+	sin_a, cos_a := math.Abs(math.Sin(self.rotateArc_cur)), math.Abs(math.Cos(self.rotateArc_cur))
+	pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
+
+	ele_w := pdf_w*cos_a + pdf_h*sin_a
+	ele_h := pdf_w*sin_a + pdf_h*cos_a
+	local_scale_coe := self.data.base_height / ele_h
+
+	box_w := ele_w * local_scale_coe
+	box_h := ele_h * local_scale_coe
+
+	return box_w, box_h
+}
+
+// 其他 ---------------------------------------------------------------------------------------
+
+// 计算某一页在当前排版下所在行的尺寸
+func (self *PDFViewer) calc_row_page_size(page int) (float64, float64) {
+	switch self.mode_layout {
+	default:
+		return self.calc_box_size(page)
+	case mode_layout_double:
+		if r := page % 2; r == 0 {
+			w1, h1 := self.calc_box_size(page)
+			w2, _ := self.calc_box_size(page + 1)
+			return w1 + w2, h1
+		} else {
+			w1, h1 := self.calc_box_size(page)
+			w2, _ := self.calc_box_size(page - 1)
+			return w1 + w2, h1
+		}
+	case mode_layout_single_double:
+		if page == 0 {
+			return self.calc_box_size(0)
+		}
+		if r := page % 2; r == 0 {
+			w1, h1 := self.calc_box_size(page)
+			w2, _ := self.calc_box_size(page - 1)
+			return w1 + w2, h1
+		} else {
+			w1, h1 := self.calc_box_size(page)
+			w2, _ := self.calc_box_size(page + 1)
+			return w1 + w2, h1
+		}
+	}
+}
+
+// 跳转到某页并居中,返回Scale,OffsetX,OffsetY
+func (self *PDFViewer) apply_center(page int) (float64, float64, float64) {
+	scale := self.apply_center_scale(page)
+	x, y := self.apply_center_pos(page)
+	return scale, x, y
+}
+
+// 应用目标页的居中尺寸
+func (self *PDFViewer) apply_center_scale(page int) float64 {
+	row_w, row_h := self.calc_row_page_size(page)
+	area_w, area_h := float64(self.viewer_area.X), float64(self.viewer_area.Y)
+
+	self.scale_tar = math.Round(math.Min(area_w/row_w, area_h/row_h)*100) / 100
+	return self.scale_tar
+}
+
+// 应用目标页的居中位置
+func (self *PDFViewer) apply_center_pos(page int) (float64, float64) {
+	row_w, _ := self.calc_row_page_size(page)
+	area_w, area_h := float64(self.viewer_area.X), float64(self.viewer_area.Y)
+
+	switch self.mode_layout {
+	case mode_layout_double:
+		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
+		self.offsetY_tar = math.Round((area_h-self.data.base_height*self.scale_tar)*.5 - float64(page/2)*(self.data.base_height+self.pad)*self.scale_tar - 0.5)
+
+	case mode_layout_single_double:
+		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
+		self.offsetY_tar = math.Round((area_h-self.data.base_height*self.scale_tar)*.5 - float64(page/2+1)*(self.data.base_height+self.pad)*self.scale_tar - 0.5)
+
+	// case mode_layout_fit:
+	// 	self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
+	// 	self.offsetY_tar = math.Round(-float64(page)*(self.base_height+self.pad)*self.scale_tar - 0.5)
+
+	default:
+		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
+		self.offsetY_tar = math.Round((area_h-self.data.base_height*self.scale_tar)*.5 - float64(page)*(self.data.base_height+self.pad)*self.scale_tar - 0.5)
+	}
+	return self.offsetX_tar, self.offsetY_tar
+}
+
+// 渲染回调函数 -------------------------------------------------------------------------------
 
 // 渲染回调,为控件应用渲染图
 func (self *PDFViewer) callback_apply_full(page int, dpi float64, mode_shader modeShader, img *image.RGBA) {
@@ -1137,209 +1287,7 @@ func (self *PDFViewer) callback_apply_tile(page int, dpi float64, rect *types.Re
 	}()
 }
 
-// 得到指定页的包围盒尺寸
-func (self *PDFViewer) get_box_size(page int) (float64, float64) {
-	if page < 0 || page >= self.doc_page_num {
-		return 0, 0
-	}
-
-	s, exist := self.buffer_box_size[page]
-	if exist {
-		return s[0], s[1]
-	}
-	return self.calc_box_size(page)
-}
-
-// 计算指定页的包围框尺寸
-//   - 前提:尺寸缓冲区存在
-func (self *PDFViewer) calc_box_size(page int) (float64, float64) {
-	size, exist := self.buffer_size[page]
-	if !exist {
-		s, _ := self.bridge_trunk.Get_size(self.doc_id, page)
-		size = &s
-	}
-
-	// 局部变换参数计算
-	sin_a, cos_a := math.Abs(math.Sin(self.rotateArc_cur)), math.Abs(math.Cos(self.rotateArc_cur))
-	pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
-
-	ele_w := pdf_w*cos_a + pdf_h*sin_a
-	ele_h := pdf_w*sin_a + pdf_h*cos_a
-	local_scale_coe := self.base_height / ele_h
-
-	box_w := ele_w * local_scale_coe
-	box_h := ele_h * local_scale_coe
-
-	return box_w, box_h
-}
-
-// 得到指定页在控件坐标系内的偏移
-func (self *PDFViewer) calc_box_pos_global(page int) (float64, float64) {
-	w := self.buffer_box_size[page][0]
-	h := self.buffer_box_size[page][1]
-	var x, y float64 = 0.0, 0.0
-
-	switch self.mode_layout {
-	default: // 单页排版
-		x = -w * 0.5
-		y = (h + self.pad) * float64(page)
-
-	case mode_layout_double: // 双页排版
-		is_first := page%2 == 0 // 是否从左往右数的第一页
-		is_right := self.mode_order == mode_order_right
-
-		w1 := Ternary(is_first,
-			self.buffer_box_size[page][0],
-			self.buffer_box_size[page-1][0],
-		)
-		w2 := Ternary(is_first,
-			Ternary(page+1 >= self.doc_page_num, 0, self.buffer_box_size[page+1][0]),
-			self.buffer_box_size[page][0],
-		)
-
-		x = Ternary(is_first,
-			Ternary(is_right, -(w1+w2)*0.5+w2, -(w1+w2)*0.5),
-			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
-		)
-
-		y = (h + self.pad) * float64(page/2)
-
-	case mode_layout_single_double: // 单页+双页
-		is_first := (page-1)%2 == 0
-		is_right := self.mode_order == mode_order_right
-
-		w1 := Ternary(is_first,
-			self.buffer_box_size[page][0],
-			self.buffer_box_size[page-1][0],
-		)
-		w2 := Ternary(is_first,
-			Ternary(page+1 < self.doc_page_num, self.buffer_box_size[page+1][0], 0),
-			self.buffer_box_size[page][0],
-		)
-
-		x = Ternary(is_first,
-			Ternary(is_right, -(w1+w2)*0.5+w2, -(w1+w2)*0.5),
-			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
-		)
-
-		y = Ternary(page == 0,
-			(h+self.pad)*float64(page),
-			(h+self.pad)*float64((page-1)/2+1),
-		)
-	}
-
-	self.buffer_box_pos[page] = [2]float64{x, y}
-	return x, y
-}
-
-// 缩放变换
-
-// 其他 -----------------------------------------------------------------------------------------------------
-
-// 计算某一页在当前排版下所在行的尺寸
-func (self *PDFViewer) calc_row_page_size(page int) (float64, float64) {
-	switch self.mode_layout {
-	default:
-		return self.get_box_size(page)
-	case mode_layout_double:
-		if r := page % 2; r == 0 {
-			w1, h1 := self.get_box_size(page)
-			w2, _ := self.get_box_size(page + 1)
-			return w1 + w2, h1
-		} else {
-			w1, h1 := self.get_box_size(page)
-			w2, _ := self.get_box_size(page - 1)
-			return w1 + w2, h1
-		}
-	case mode_layout_single_double:
-		if page == 0 {
-			return self.get_box_size(0)
-		}
-		if r := page % 2; r == 0 {
-			w1, h1 := self.get_box_size(page)
-			w2, _ := self.get_box_size(page - 1)
-			return w1 + w2, h1
-		} else {
-			w1, h1 := self.get_box_size(page)
-			w2, _ := self.get_box_size(page + 1)
-			return w1 + w2, h1
-		}
-	}
-
-}
-
-// 跳转到某页并居中,返回Scale,OffsetX,OffsetY
-func (self *PDFViewer) apply_center(page int) (float64, float64, float64) {
-	// // 得到目标行的尺寸
-	// row_w, row_h := self.calc_row_page_size(page)
-	// area_w, area_h := float64(self.viewer_area.X), float64(self.viewer_area.Y)
-	//
-	// switch self.mode_layout {
-	// case mode_layout_double:
-	//
-	//	self.scale_tar = math.Round(math.Min(area_w/row_w, area_h/row_h)*100) / 100
-	//	self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-	//	self.offsetY_tar = math.Round((area_h-self.base_height*self.scale_tar)*.5 - float64(page/2)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-	//
-	// case mode_layout_single_double:
-	//
-	//	self.scale_tar = math.Round(math.Min(area_w/row_w, area_h/row_h)*100) / 100
-	//	self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-	//	self.offsetY_tar = math.Round((area_h-self.base_height*self.scale_tar)*.5 - float64(page/2+1)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-	//
-	// case mode_layout_fit:
-	//
-	//	self.scale_tar = math.Max(area_w/row_w, area_h/row_h)
-	//	self.scale_tar = math.Round(self.scale_tar*100) / 100
-	//	self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-	//	self.offsetY_tar = math.Round(-float64(page)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-	//
-	// default:
-	//		self.scale_tar = math.Min(area_w/row_w, area_h/row_h)
-	//		self.scale_tar = math.Round(self.scale_tar*100) / 100
-	//		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-	//		self.offsetY_tar = math.Round((area_h-self.base_height*self.scale_tar)*.5 - float64(page)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-	//	}
-	//
-	// return self.scale_tar, self.offsetX_tar, self.offsetY_tar
-
-	scale := self.apply_center_scale(page)
-	x, y := self.apply_center_pos(page)
-	return scale, x, y
-}
-
-func (self *PDFViewer) apply_center_scale(page int) float64 {
-	row_w, row_h := self.calc_row_page_size(page)
-	area_w, area_h := float64(self.viewer_area.X), float64(self.viewer_area.Y)
-
-	self.scale_tar = math.Round(math.Min(area_w/row_w, area_h/row_h)*100) / 100
-	return self.scale_tar
-}
-
-func (self *PDFViewer) apply_center_pos(page int) (float64, float64) {
-	// log.Println(page)
-	row_w, _ := self.calc_row_page_size(page)
-	area_w, area_h := float64(self.viewer_area.X), float64(self.viewer_area.Y)
-
-	switch self.mode_layout {
-	case mode_layout_double:
-		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-		self.offsetY_tar = math.Round((area_h-self.base_height*self.scale_tar)*.5 - float64(page/2)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-
-	case mode_layout_single_double:
-		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-		self.offsetY_tar = math.Round((area_h-self.base_height*self.scale_tar)*.5 - float64(page/2+1)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-
-	// case mode_layout_fit:
-	// 	self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-	// 	self.offsetY_tar = math.Round(-float64(page)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-
-	default:
-		self.offsetX_tar = math.Round((area_w-row_w*self.scale_tar)*.5 + row_w*self.scale_tar*0.5)
-		self.offsetY_tar = math.Round((area_h-self.base_height*self.scale_tar)*.5 - float64(page)*(self.base_height+self.pad)*self.scale_tar - 0.5)
-	}
-	return self.offsetX_tar, self.offsetY_tar
-}
+// 参数转换部分 ---------------------------------------------------------------------------
 
 // 世界坐标转屏幕坐标
 func (self *PDFViewer) from_world_to_screen(x float64, y float64) (float64, float64) {
@@ -1356,7 +1304,8 @@ func (self *PDFViewer) from_screen_to_world(x, y float64) (float64, float64) {
 }
 
 // 弧度转状态
-func (self *PDFViewer) to_arc_state(arc float64) int {
+//   - 0,1,2,3 分别指示0,90,180,270
+func (self *PDFViewer) from_rad_to_state(arc float64) int {
 	rad := math.Mod(arc, 2*math.Pi)
 	if rad < 0 {
 		rad += 2 * math.Pi
@@ -1365,9 +1314,11 @@ func (self *PDFViewer) to_arc_state(arc float64) int {
 	return step
 }
 
+// api调用部分 -------------------------------------------------------------------------
+
 // 设置ID
 func (self *PDFViewer) API_set_id(id string) *PDFViewer {
-	self.id = id
+	self.doc_id = id
 	return self
 }
 
@@ -1398,89 +1349,155 @@ func (self *PDFViewer) API_get_page_size(page int) image.Rectangle {
 	return image.Rect(0, 0, int(w), int(h))
 }
 
-type PDFViewerAPI interface {
+// 子结构, 用于处理不同方面的问题 ---------------------------------------------------------------------------
+
+// 一些与主结构相互协调的api --------------------------------------------------------------------------------
+type ViewPDF_API interface {
 	API_get_page_size(page int) image.Rectangle
 }
 
-// pdf预览界面的布局排版管理器 ---------------------------------------------------------------------------------
-type ViewPDF_Manager_Layout struct {
-	sizes map[int]image.Rectangle
-	pages *map[int]PageInfo
-
+// pdf每一页的更新与绘制 ------------------------------------------------------------------------------------
+//
+//	包含计算旋转,页缩放到控件中,页的绘制
+type ViewPDF_PageBox struct {
 	data *ViewPDF_data
 
-	doc_page_num int
+	is_background bool // 是否背景,是则显示背景纯色图,不是则显示渲染图
+	page_num      int  // 页码
+	page_dpi      float64
 
-	base_height float64
+	tile_dpi float64
+}
+
+func NewViewPDF_PageBox(data *ViewPDF_data) *ViewPDF_PageBox {
+	self := ViewPDF_PageBox{
+		data: data,
+	}
+	return &self
+}
+
+func (self *ViewPDF_PageBox) Draw(gtx C, page_num int) {
+	radius := int(self.data.radius)
+	rad := self.data.rad_cur
 	//
-	// 	buffer_box_size map[int][2]float64
-	// 	buffer_box_pos  map[int][2]float64
 
-	rad_tar      float64
-	rad_cur      float64
-	scale_tar    float64
-	scale_cur    float64
-	offset_x_tar float64
-	offset_x_cur float64
-	offset_y_tar float64
-	offset_y_cur float64
+	log.Println(rad)
+	// x, y := 0.0, 0.0
+	// scale := 1.0
 
-	pad_height float64
-	pad_width  float64
+	page_size := self.data.buffer_page_size[page_num]
+	page_w := page_size.Max.X
+	page_h := page_size.Max.Y
+
+	sin_rad := math.Abs(math.Sin(rad))
+	cos_rad := math.Abs(math.Cos(rad))
+
+	// ele_w := float64(page_w)*cos_rad + float64(page_h)*sin_rad
+	ele_h := float64(page_w)*sin_rad + float64(page_h)*cos_rad
+
+	scale := self.data.base_height / ele_h
+
+	// 	pdf_size := self.data.buffer_page_size[page_num]
+	// 	pdf_w := float64(pdf_size.Max.X)
+	// 	pdf_h := float64(pdf_size.Max.Y)
+
+	width := int(self.data.buffer_box_size[page_num][0])
+	height := int(self.data.buffer_box_size[page_num][1])
+
+	w, h := float64(page_w)*scale, float64(page_h)*scale
+	x0, y0 := tool.Rotate_point(w, 0, 0, 0, rad)
+	x1, y1 := tool.Rotate_point(w, h, 0, 0, rad)
+	x2, y2 := tool.Rotate_point(0, h, 0, 0, rad)
+	x3, y3 := 0.0, 0.0
+	min_x, min_y := min(x0, x1, x2, x3), min(y0, y1, y2, y3)
+
+	local_offset := op.Offset(image.Pt(-int(min_x), -int(min_y)))
+	local_rotate := f32.Affine2D{}.Rotate(f32.Pt(0, 0), float32(rad))
+	local_clip := clip.RRect{
+		Rect: image.Rect(0, 0, width, height),
+		SW:   radius,
+		SE:   radius,
+		NW:   radius,
+		NE:   radius,
+	}
+	local_scale := f32.Affine2D{}.Scale(
+		f32.Pt(0, 0),
+		f32.Pt(float32(scale), float32(scale)),
+	)
+
+	// 局部变换
+	apply_offset := local_offset.Push(gtx.Ops)
+	apply_rotate := op.Affine(local_rotate).Push(gtx.Ops)
+	apply_clip := local_clip.Push(gtx.Ops)
+	apply_scale := op.Affine(local_scale).Push(gtx.Ops)
+
+	// self.data.buffer_page[page_num].Widget.Layout(gtx)
+	// context()
+
+	// draw_rectangle(gtx, image.Pt(int(pdf_w), int(pdf_h)), COLOR_WHITE, 0)
+	draw_rectangle(gtx, image.Pt(width, height), COLOR_ORANGE, 0)
+
+	apply_scale.Pop()
+	apply_clip.Pop()
+	apply_rotate.Pop()
+	apply_offset.Pop()
+}
+
+// 计算包围盒尺寸
+func (self *ViewPDF_PageBox) calc_size() {}
+
+// pdf预览界面的布局排版管理器 ---------------------------------------------------------------------------------
+type ViewPDF_Manager_Layout struct {
+	data *ViewPDF_data
 
 	mode_layout modeLayout
 	mode_order  modeOrder
 
-	bridge_viewer PDFViewerAPI
+	bridge_viewer ViewPDF_API
 }
 
 func NewViewPDF_Manager_Layout(data *ViewPDF_data) *ViewPDF_Manager_Layout {
 	self := ViewPDF_Manager_Layout{
-
 		data: data,
-
-		rad_tar:      0.0,
-		rad_cur:      0.0,
-		pages:        &map[int]PageInfo{},
-		sizes:        map[int]image.Rectangle{},
-		doc_page_num: 0,
-
-		// buffer_box_size: map[int][2]float64{},
-		// buffer_box_pos:  map[int][2]float64{},
-
-		base_height: 1000,
 
 		mode_layout: mode_layout_single,
 		mode_order:  mode_order_left,
-
-		pad_height: 8.0,
-		pad_width:  8.0,
 	}
 	return &self
+}
+
+func (self *ViewPDF_Manager_Layout) API_set_viewer(viewer ViewPDF_API) *ViewPDF_Manager_Layout {
+	self.bridge_viewer = viewer
+	return self
 }
 
 // 计算位置_世界坐标系中的位置
 func (self *ViewPDF_Manager_Layout) Calc_pos(page int) image.Point {
 	w := self.data.buffer_box_size[page][0]
 	h := self.data.buffer_box_size[page][1]
+
+	box_size := self.data.buffer_box_size
+	doc_num := self.data.doc_num
+	pad := self.data.pad_height
+
 	var x, y float64 = 0.0, 0.0
 
 	switch self.mode_layout {
 	default: // 单页排版
 		x = -w * 0.5
-		y = (h + self.pad_height) * float64(page)
+		y = (h + pad) * float64(page)
 
 	case mode_layout_double: // 双页排版
 		is_first := page%2 == 0 // 是否从左往右数的第一页
 		is_right := self.mode_order == mode_order_right
 
 		w1 := Ternary(is_first,
-			self.data.buffer_box_size[page][0],
-			self.data.buffer_box_size[page-1][0],
+			box_size[page][0],
+			box_size[page-1][0],
 		)
 		w2 := Ternary(is_first,
-			Ternary(page+1 >= self.doc_page_num, 0, self.data.buffer_box_size[page+1][0]),
-			self.data.buffer_box_size[page][0],
+			Ternary(page+1 >= doc_num, 0, box_size[page+1][0]),
+			box_size[page][0],
 		)
 
 		x = Ternary(is_first,
@@ -1488,19 +1505,19 @@ func (self *ViewPDF_Manager_Layout) Calc_pos(page int) image.Point {
 			Ternary(is_right, -(w1+w2)*0.5, -(w1+w2)*0.5+w1),
 		)
 
-		y = (h + self.pad_height) * float64(page/2)
+		y = (h + pad) * float64(page/2)
 
 	case mode_layout_single_double: // 单页+双页
 		is_first := (page-1)%2 == 0
 		is_right := self.mode_order == mode_order_right
 
 		w1 := Ternary(is_first,
-			self.data.buffer_box_size[page][0],
-			self.data.buffer_box_size[page-1][0],
+			box_size[page][0],
+			box_size[page-1][0],
 		)
 		w2 := Ternary(is_first,
-			Ternary(page+1 < self.doc_page_num, self.data.buffer_box_size[page+1][0], 0),
-			self.data.buffer_box_size[page][0],
+			Ternary(page+1 < doc_num, box_size[page+1][0], 0),
+			box_size[page][0],
 		)
 
 		x = Ternary(is_first,
@@ -1509,8 +1526,8 @@ func (self *ViewPDF_Manager_Layout) Calc_pos(page int) image.Point {
 		)
 
 		y = Ternary(page == 0,
-			(h+self.pad_height)*float64(page),
-			(h+self.pad_height)*float64((page-1)/2+1),
+			(h+pad)*float64(page),
+			(h+pad)*float64((page-1)/2+1),
 		)
 	}
 
@@ -1518,36 +1535,22 @@ func (self *ViewPDF_Manager_Layout) Calc_pos(page int) image.Point {
 	return image.Pt(int(x), int(y))
 }
 
-func (self *ViewPDF_Manager_Layout) API_set_pages(pages *map[int]PageInfo) *ViewPDF_Manager_Layout {
-	self.pages = pages
-	return self
-}
-
-func (self *ViewPDF_Manager_Layout) API_set_sizes(sizes map[int]image.Rectangle) *ViewPDF_Manager_Layout {
-	self.sizes = sizes
-	return self
-}
-func (self *ViewPDF_Manager_Layout) API_set_viewer(viewer PDFViewerAPI) *ViewPDF_Manager_Layout {
-	self.bridge_viewer = viewer
-	return self
-}
-
-func (self *ViewPDF_Manager_Layout) calc_box_size(page int) (float64, float64) {
-	size, exist := self.sizes[page]
-	if !exist {
-		size = self.bridge_viewer.API_get_page_size(page)
-	}
-
-	// 局部变换参数计算
-	sin_a, cos_a := math.Abs(math.Sin(self.rad_cur)), math.Abs(math.Cos(self.rad_cur))
-	pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
-
-	ele_w := pdf_w*cos_a + pdf_h*sin_a
-	ele_h := pdf_w*sin_a + pdf_h*cos_a
-	local_scale_coe := self.base_height / ele_h
-
-	box_w := ele_w * local_scale_coe
-	box_h := ele_h * local_scale_coe
-
-	return box_w, box_h
-}
+// func (self *ViewPDF_Manager_Layout) calc_box_size(page int) (float64, float64) {
+// 	size, exist := self.sizes[page]
+// 	if !exist {
+// 		size = self.bridge_viewer.API_get_page_size(page)
+// 	}
+//
+// 	// 局部变换参数计算
+// 	sin_a, cos_a := math.Abs(math.Sin(self.data.rad_cur)), math.Abs(math.Cos(self.data.rad_cur))
+// 	pdf_w, pdf_h := float64(size.Dx()), float64(size.Dy())
+//
+// 	ele_w := pdf_w*cos_a + pdf_h*sin_a
+// 	ele_h := pdf_w*sin_a + pdf_h*cos_a
+// 	local_scale_coe := self.data.base_height / ele_h
+//
+// 	box_w := ele_w * local_scale_coe
+// 	box_h := ele_h * local_scale_coe
+//
+// 	return box_w, box_h
+// }

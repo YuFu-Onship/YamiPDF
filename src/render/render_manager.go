@@ -83,7 +83,6 @@ func (self *RenderInstManager) Run() {
 		if len(self.task_list) == 0 && len(self.task_list_1) == 0 && len(self.task_list_2) == 0 {
 			self.mu.Unlock()
 			runtime.GC()
-			log.Println("clean")
 			<-self.chan_notify // 没有通知时堵塞
 			continue
 		}
