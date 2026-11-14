@@ -5,9 +5,9 @@
 <h1 align="center">Yami PDF</h1>
 
 <p align="center">
-  简洁轻量的PDF阅读器，基于go-fitz和Gio UI
+  简洁轻量的PDF阅读器，基于go-fitz和Gio UI，以及大量的人类劳动。
 </p>
 
 <p align="center">
-  A lightweight, minimalist PDF reader based on go-fitz and Gio UI
+  A simple, lightweight PDF reader, based on go-fitz, GioUI and substantial human labor.
 </p>
